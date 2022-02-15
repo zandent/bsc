@@ -319,7 +319,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 		msg := types.NewMessage(FRONTRUN_ADDRESS, nil, aa.old_tx.Nonce(), aa.old_tx.Value(), aa.old_tx.Gas(), aa.old_tx.GasPrice(), replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, aa.old_tx.Data()), aa.old_tx.AccessList(), true)
 		aa.old_tx = &msg
 	} else {
-		if deploy_gas_price, deploy_gas, deploy_value, is_create_action, call_address, deploy_data, ok := get_contract_init_data(*aa.old_tx_contract_address); ok == nil {
+		if deploy_gas_price, deploy_gas, deploy_value, is_create_action, call_address, deploy_data, ok := Get_contract_init_data(*aa.old_tx_contract_address); ok == nil {
 			var tmp *common.Address
 			if is_create_action == 1 {
 				tmp = nil
@@ -345,7 +345,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 		}
 	}
 }
-func overwrite_new_tx(new_tx_as_input types.Message, overwrite_contract_address common.Address) types.Message {
+func Overwrite_new_tx(new_tx_as_input types.Message, overwrite_contract_address common.Address) types.Message {
 	wrong_address := new_tx_as_input.To()
 	call_data := replace_hardcoded_address_in_data(*wrong_address, overwrite_contract_address, new_tx_as_input.Data())
 	msg := types.NewMessage(new_tx_as_input.From(), &overwrite_contract_address, new_tx_as_input.Nonce(), new_tx_as_input.Value(), new_tx_as_input.Gas(), new_tx_as_input.GasPrice(), call_data, new_tx_as_input.AccessList(), true)
@@ -372,7 +372,7 @@ func replace_hardcoded_address_in_data(address_in common.Address, address_out co
 	}
 	return parsed_data
 }
-func get_contract_init_data(contract common.Address) (common.Hash, common.Hash, common.Hash, byte, common.Address, []byte, error) {
+func Get_contract_init_data(contract common.Address) (common.Hash, common.Hash, common.Hash, byte, common.Address, []byte, error) {
 	var r1 common.Hash
 	var r2 common.Hash
 	var r3 common.Hash
@@ -393,7 +393,7 @@ func get_contract_init_data(contract common.Address) (common.Hash, common.Hash, 
 	}
 	return r1, r2, r3, r4, r5, r6, nil
 }
-func set_contract_init_data(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, is_create_action byte, call_address common.Address, sender common.Address) {
+func Set_contract_init_data(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, is_create_action byte, call_address common.Address, sender common.Address) {
 	db, _ := bitcask.Open("contract_db")
 	defer db.Close()
 	parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)

@@ -601,6 +601,9 @@ func opCreate(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 	}
 
 	res, addr, returnGas, suberr := interpreter.evm.Create(scope.Contract, input, gas, bigVal)
+	//flash loan
+	//store new created address into db
+	interpreter.evm.StateDB.Store_contract_address(addr)
 	// Push item on the stack based on the returned error. If the ruleset is
 	// homestead we must check for CodeStoreOutOfGasError (homestead only
 	// rule) and treat as an error, if the ruleset is frontier we must
@@ -647,6 +650,9 @@ func opCreate2(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]
 	}
 	res, addr, returnGas, suberr := interpreter.evm.Create2(scope.Contract, input, gas,
 		bigEndowment, &salt)
+	//flash loan
+	//store new created address into db
+	interpreter.evm.StateDB.Store_contract_address(addr)
 	// Push item on the stack based on the returned error.
 	if suberr != nil {
 		stackvalue.Clear()
@@ -693,6 +699,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 	if err != nil {
 		temp.Clear()
 	} else {
+		interpreter.evm.StateDB.Set_token_flow_in_current_transaction(scope.Contract.CallerAddress, toAddr, common.BigToHash(bigVal), common.HexToAddress("0x0000000000000000000000000000000000000001"))
 		temp.SetOne()
 	}
 	stack.push(&temp)

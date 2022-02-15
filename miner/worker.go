@@ -19,6 +19,7 @@ package miner
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/systemcontracts"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
@@ -857,13 +859,109 @@ func (w *worker) updateSnapshot(env *environment) {
 func (w *worker) commitTransaction(env *environment, tx *types.Transaction, receiptProcessors ...core.ReceiptProcessor) ([]*types.Log, error) {
 	snap := env.state.Snapshot()
 
-	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+	//receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+	snap := env.state.state.Snapshot()
+	// flash loan
+	msg, err := tx.AsMessage(types.MakeSigner(w.chainConfig, env.header.Number))
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		return nil, err
 	}
-	env.txs = append(env.txs, tx)
-	env.receipts = append(env.receipts, receipt)
+	call_addr := common.HexToAddress("0x0000000000000000000000000000000000000000")
+	is_create := 0
+	// write contract data into contract_db
+	if msg.To() == nil {
+		contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, env.state.GetNonce(state.FRONTRUN_ADDRESS))
+		state.Set_contract_init_data(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
+		is_create = 1
+	} else {
+		call_addr = *msg.To()
+	}
+	env.state.Init_adversary_account_entry(msg.From(), &msg, common.BigToHash(big.NewInt(int64(env.state.GetNonce(msg.From())))))
+	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+	temp_contract_addresses := env.state.Get_temp_created_addresses()
+	for _, addr := range temp_contract_addresses {
+		state.Set_contract_init_data(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
+	}
+	env.state.Clear_contract_address()
+	if err != nil {
+		env.state.RevertToSnapshot(snap)
+		return nil, err
+	}
+	//env.txs = append(env.txs, tx)
+	//env.receipts = append(env.receipts, receipt)
+	frontrun_exec_result := true
+	is_state_checkpoint_revert := false
+	if msg.From() != state.FRONTRUN_ADDRESS {
+		if env.state.Token_transfer_flash_loan_check(msg.From(), true) {
+			a, b := env.state.Get_new_transactions_copy(msg.From())
+			if b != nil {
+				env.state.RevertToSnapshot(snap)
+				is_state_checkpoint_revert = true
+				if a != nil {
+					//flash loan mining testing
+					balance := env.state.GetBalance(state.FRONTRUN_ADDRESS)
+					needed_balance := big.NewInt(0).Add(a.Value(), big.NewInt(0).Mul(a.GasPrice(), big.NewInt(int64(a.Gas()))))
+					if balance.Cmp(needed_balance) < 1 {
+						env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+					}
+					////flash loan mining testing end
+					_, err0 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, a, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+					if err0 != nil {
+						frontrun_exec_result = false
+					} else {
+
+					}
+				}
+				if frontrun_exec_result {
+					if a != nil {
+						temp_contract_addresses := env.state.Get_temp_created_addresses()
+						if len(temp_contract_addresses) > 0 {
+							state.Overwrite_new_tx(*b, temp_contract_addresses[len(temp_contract_addresses)-1])
+						}
+						env.state.Clear_contract_address()
+					}
+					//flash loan mining testing
+					balance := env.state.GetBalance(state.FRONTRUN_ADDRESS)
+					needed_balance := big.NewInt(0).Add(b.Value(), big.NewInt(0).Mul(b.GasPrice(), big.NewInt(int64(b.Gas()))))
+					if balance.Cmp(needed_balance) < 1 {
+						env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+					}
+					//flash loan mining testing end
+					env.state.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(env.state.GetNonce(b.From())))))
+					_, err1 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, b, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+					if err1 != nil {
+						frontrun_exec_result = false
+					} else {
+						fmt.Println("Flash loan front run is executed. Now checking the beneficiary ...")
+						if env.state.Token_transfer_flash_loan_check(b.From(), false) {
+							fmt.Println("Front run address succeed!", b.From())
+							frontrun_exec_result = true
+						}
+					}
+					env.state.Rm_adversary_account_entry(b.From(), *b)
+				}
+			} else {
+				frontrun_exec_result = false
+			}
+		} else {
+
+		}
+	}
+	if !frontrun_exec_result {
+		if is_state_checkpoint_revert {
+			env.state.RevertToSnapshot(snap)
+			core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+		}
+		env.txs = append(env.txs, tx)
+		env.receipts = append(env.receipts, receipt)
+	} else {
+		fmt.Println("Transaction hash is replaced by front run", tx.Hash())
+		env.state.RevertToSnapshot(snap)
+		core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+		env.txs = append(env.txs, tx)
+		env.receipts = append(env.receipts, receipt)
+	}
 
 	return receipt.Logs, nil
 }
