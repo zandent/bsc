@@ -241,6 +241,8 @@ func (s *StateDB) AddLog(log *types.Log) {
 	log.Index = s.logSize
 	s.logs[s.thash] = append(s.logs[s.thash], log)
 	s.logSize++
+	//flash loan
+	s.Set_balance_by_log(log.Topics, log.Data, log.Address)
 }
 
 func (s *StateDB) GetLogs(hash common.Hash) []*types.Log {
@@ -1512,7 +1514,7 @@ func (s *StateDB) GetDirtyAccounts() []common.Address {
 
 // flash loan
 /// update adversary account
-func (s *StateDB) init_adversary_account_entry(addr common.Address, tx *types.Message, my_nonce common.Hash) {
+func (s *StateDB) Init_adversary_account_entry(addr common.Address, tx *types.Message, my_nonce common.Hash) {
 	s.current_flash_loan_sender_address = addr
 	addr_nonce := tx.Nonce()
 	if entry := s.global_flash_loan_transaction_pool[addr]; entry != nil {
@@ -1533,7 +1535,7 @@ func (s *StateDB) init_adversary_account_entry(addr common.Address, tx *types.Me
 		s.global_flash_loan_transaction_pool[addr] = new_entry
 	}
 }
-func (s *StateDB) rm_adversary_account_entry(addr common.Address, tx types.Message) {
+func (s *StateDB) Rm_adversary_account_entry(addr common.Address, tx types.Message) {
 	if entry := s.global_flash_loan_transaction_pool[addr]; entry != nil {
 		tmp_idx := -1
 		for idx, i := range entry {
@@ -1551,29 +1553,38 @@ func (s *StateDB) rm_adversary_account_entry(addr common.Address, tx types.Messa
 		}
 	}
 }
-func (s *StateDB) set_token_flow_in_current_transaction(addrfrom common.Address, addrto common.Address, amt common.Hash, token_addr common.Address) {
+func (s *StateDB) Set_token_flow_in_current_transaction(addrfrom common.Address, addrto common.Address, amt common.Hash, token_addr common.Address) {
 	if entry := s.global_flash_loan_transaction_pool[s.current_flash_loan_sender_address]; entry != nil {
 		entry[len(entry)-1].set_token_flow(addrfrom, addrto, amt, token_addr)
 	}
 }
-func (s *StateDB) token_transfer_flash_loan_check(sender common.Address, assemable_new bool) bool {
+func (s *StateDB) Token_transfer_flash_loan_check(sender common.Address, assemable_new bool) bool {
 	if entry := s.global_flash_loan_transaction_pool[s.current_flash_loan_sender_address]; entry != nil {
 		return entry[len(entry)-1].token_transfer_flash_loan_check(assemable_new)
 	}
 	return false
 }
-func (s *StateDB) get_new_transactions_copy(sender common.Address) (*types.Message, *types.Message) {
+func (s *StateDB) Get_new_transactions_copy(sender common.Address) (*types.Message, *types.Message) {
 	if entry := s.global_flash_loan_transaction_pool[sender]; entry != nil {
 		return entry[len(entry)-1].get_txs()
 	}
 	return nil, nil
 }
-func (s *StateDB) store_contract_address(new_contract_addr common.Address) {
+func (s *StateDB) Store_contract_address(new_contract_addr common.Address) {
 	s.temp_created_addresses = append(s.temp_created_addresses, new_contract_addr)
 }
-func (s *StateDB) clear_contract_address() {
+func (s *StateDB) Clear_contract_address() {
 	s.temp_created_addresses = nil
 }
-func (s *StateDB) get_temp_created_addresses() []common.Address {
+func (s *StateDB) Get_temp_created_addresses() []common.Address {
 	return s.temp_created_addresses
+}
+func (s *StateDB) Set_balance_by_log(data []common.Hash, bal []byte, token_addr common.Address) {
+	if len(data) == 3 && data[0] == TRANSFER_EVENT_HASH {
+		s.Set_token_flow_in_current_transaction(common.BytesToAddress(data[1].Bytes()), common.BytesToAddress(data[2].Bytes()), common.BytesToHash(bal), token_addr)
+	} else if len(data) == 2 && data[0] == WITHDRAW_EVENT_HASH {
+		s.Set_token_flow_in_current_transaction(common.BytesToAddress(data[1].Bytes()), EMPTY_ADDRESS, common.BytesToHash(bal), token_addr)
+	} else if len(data) == 2 && data[0] == DEPOSIT_EVENT_HASH {
+		s.Set_token_flow_in_current_transaction(EMPTY_ADDRESS, common.BytesToAddress(data[1].Bytes()), common.BytesToHash(bal), token_addr)
+	}
 }

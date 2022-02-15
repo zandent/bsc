@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -267,9 +268,13 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		ret   []byte
 		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
 	)
+	//flash loan
 	if contractCreation {
+		contractAddr := crypto.CreateAddress(sender.Address(), st.evm.StateDB.GetNonce(sender.Address()))
+		st.evm.StateDB.Set_token_flow_in_current_transaction(msg.From(), contractAddr, common.BigToHash(msg.Value()), common.HexToAddress("0x0000000000000000000000000000000000000001"))
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
 	} else {
+		st.evm.StateDB.Set_token_flow_in_current_transaction(msg.From(), *msg.To(), common.BigToHash(msg.Value()), common.HexToAddress("0x0000000000000000000000000000000000000001"))
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
