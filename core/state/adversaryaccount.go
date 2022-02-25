@@ -76,23 +76,29 @@ type AdversaryAccount struct {
 	new_deploy_tx *types.Message
 	// new flash loan transaction, NOTICE that it may be also a deploy transaction if old_tx is deploy tx
 	new_tx *types.Message
+	// new call for init. It should be used if new_tx fails.
+	new_init_func_call_tx *types.Message
 	//temp contract addresses created in this transcation
 	temp_contract_addresses []common.Address
+	//target beneficiary addresses to replace in data instead of sender and old_tx_contract_address
+	target_beneficiary_addresses []common.Address
 }
 
 func NewAdversaryAccount(n uint64, t *types.Message, m_n uint64) *AdversaryAccount {
 	tmp_old_tx_contract_address := t.To()
 	aa := &AdversaryAccount{
-		balance_traces:          make(map[common.Address]map[common.Address][]TransferAmount),
-		transfer_in_order:       []TransferInfo{},
-		flash_loan_information:  make(map[common.Address]IndividualAdversaryAccountHelper),
-		old_tx:                  nil,
-		old_tx_contract_address: tmp_old_tx_contract_address,
-		nonce:                   n,
-		my_nonce:                m_n,
-		new_deploy_tx:           nil,
-		new_tx:                  nil,
-		temp_contract_addresses: []common.Address{},
+		balance_traces:               make(map[common.Address]map[common.Address][]TransferAmount),
+		transfer_in_order:            []TransferInfo{},
+		flash_loan_information:       make(map[common.Address]IndividualAdversaryAccountHelper),
+		old_tx:                       nil,
+		old_tx_contract_address:      tmp_old_tx_contract_address,
+		nonce:                        n,
+		my_nonce:                     m_n,
+		new_deploy_tx:                nil,
+		new_tx:                       nil,
+		new_init_func_call_tx:        nil,
+		temp_contract_addresses:      []common.Address{},
+		target_beneficiary_addresses: []common.Address{},
 	}
 	return aa
 }
