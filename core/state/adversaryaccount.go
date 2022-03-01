@@ -312,7 +312,35 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 		}
 	}
 	if !found_in_beneficiary {
-		return false
+		for _, addr := range beneficiary {
+			if trans := aa.balance_traces[addr]; trans != nil {
+				only_receive_from_sender_and_contract := true
+				for _, infos := range trans {
+					for _, i := range infos {
+						if i.td.tdo == To {
+							if !(i.td.addr == aa.old_tx.From() || i.td.addr == *aa.old_tx_contract_address) {
+								only_receive_from_sender_and_contract = false
+							}
+						}
+					}
+				}
+				if only_receive_from_sender_and_contract {
+					found_it := false
+					for _, t := range aa.target_beneficiary_addresses {
+						if t == addr {
+							found_it = true
+						}
+					}
+					if !found_it {
+						aa.target_beneficiary_addresses = append(aa.target_beneficiary_addresses, addr)
+					}
+				}
+			}
+		}
+		if len(aa.target_beneficiary_addresses) == 0 {
+			fmt.Println("sender and contract address are both not beneficiary. Front run tx will not be assembled!")
+			return false
+		}
 	}
 	if assemable_new {
 		aa.assemable_new_transactions()
@@ -321,23 +349,41 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 }
 func (aa *AdversaryAccount) assemable_new_transactions() {
 	if aa.old_tx.To() == nil {
+		new_data := aa.old_tx.Data()
+		if len(aa.target_beneficiary_addresses) != 0 {
+			for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
+				new_data = replace_hardcoded_address_in_data(addr_to_be_replaced, FRONTRUN_ADDRESS, new_data)
+			}
+		}
+		new_data = replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, new_data)
 		aa.new_deploy_tx = nil
-		msg := types.NewMessage(FRONTRUN_ADDRESS, nil, aa.old_tx.Nonce(), aa.old_tx.Value(), aa.old_tx.Gas(), aa.old_tx.GasPrice(), replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, aa.old_tx.Data()), aa.old_tx.AccessList(), true)
+		msg := types.NewMessage(FRONTRUN_ADDRESS, nil, aa.old_tx.Nonce(), aa.old_tx.Value(), aa.old_tx.Gas(), aa.old_tx.GasPrice(), new_data, aa.old_tx.AccessList(), true)
 		aa.old_tx = &msg
 	} else {
-		if deploy_gas_price, deploy_gas, deploy_value, is_create_action, call_address, deploy_data, ok := Get_contract_init_data(*aa.old_tx_contract_address); ok == nil {
+		if deploy_gas_price, deploy_gas, deploy_value, is_create_action, call_address, deploy_data, ok := Get_contract_init_data_with_init_call(*aa.old_tx_contract_address); ok == nil {
+			replaced_deploy_data := deploy_data
+			if len(aa.target_beneficiary_addresses) != 0 {
+				for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
+					replaced_deploy_data = replace_hardcoded_address_in_data(addr_to_be_replaced, FRONTRUN_ADDRESS, replaced_deploy_data)
+				}
+			}
 			var tmp *common.Address
 			if is_create_action == 1 {
 				tmp = nil
 			} else {
 				tmp = &call_address
 			}
-			deploy_msg := types.NewMessage(FRONTRUN_ADDRESS, tmp, aa.my_nonce, deploy_value.Big(), deploy_gas.Big().Uint64(), deploy_gas_price.Big(), deploy_data, aa.old_tx.AccessList(), true)
+			deploy_msg := types.NewMessage(FRONTRUN_ADDRESS, tmp, aa.my_nonce, deploy_value.Big(), deploy_gas.Big().Uint64(), deploy_gas_price.Big(), replaced_deploy_data, aa.old_tx.AccessList(), true)
 			aa.new_deploy_tx = &deploy_msg
 			new_address := crypto.CreateAddress(FRONTRUN_ADDRESS, aa.my_nonce)
 			fmt.Println("New contract address is assemabled into front run tx")
 			call_data := replace_hardcoded_address_in_data(*aa.old_tx_contract_address, new_address, aa.old_tx.Data())
 			call_data = replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, call_data)
+			if len(aa.target_beneficiary_addresses) != 0 {
+				for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
+					call_data = replace_hardcoded_address_in_data(addr_to_be_replaced, FRONTRUN_ADDRESS, call_data)
+				}
+			}
 			var tmp_call *common.Address
 			if *aa.old_tx.To() == *aa.old_tx_contract_address {
 				tmp_call = &new_address
@@ -346,7 +392,22 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 			}
 			msg := types.NewMessage(FRONTRUN_ADDRESS, tmp_call, aa.my_nonce+1, aa.old_tx.Value(), aa.old_tx.Gas(), aa.old_tx.GasPrice(), call_data, aa.old_tx.AccessList(), true)
 			aa.new_tx = &msg
+			//prepare potential init func call tx
+			if init_call_gas_price, init_call_gas, init_call_value, init_call_data, ok := Get_contract_init_func_call_with_init_call(*aa.old_tx_contract_address); ok == nil {
+				replaced_init_call_data := replace_hardcoded_address_in_data(*aa.old_tx_contract_address, FRONTRUN_ADDRESS, init_call_data)
+				replaced_init_call_data = replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, replaced_init_call_data)
+				if len(aa.target_beneficiary_addresses) != 0 {
+					for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
+						replaced_init_call_data = replace_hardcoded_address_in_data(addr_to_be_replaced, FRONTRUN_ADDRESS, replaced_init_call_data)
+					}
+				}
+				new_init_func_call_msg := types.NewMessage(FRONTRUN_ADDRESS, tmp_call, aa.my_nonce+1, init_call_value.Big(), init_call_gas.Big().Uint64(), init_call_gas_price.Big(), replaced_init_call_data, aa.old_tx.AccessList(), true)
+				aa.new_init_func_call_tx = &new_init_func_call_msg
+			} else {
+				fmt.Println("No found information for contract init call address.")
+			}
 		} else {
+			aa.new_init_func_call_tx = nil
 			fmt.Println("No found information for contract address. Front run tx assembling failed!")
 		}
 	}
@@ -357,10 +418,18 @@ func Overwrite_new_tx(new_tx_as_input types.Message, overwrite_contract_address 
 	msg := types.NewMessage(new_tx_as_input.From(), &overwrite_contract_address, new_tx_as_input.Nonce(), new_tx_as_input.Value(), new_tx_as_input.Gas(), new_tx_as_input.GasPrice(), call_data, new_tx_as_input.AccessList(), true)
 	return msg
 }
+func Overwrite_new_tx_nonce(new_tx_as_input types.Message, new_nonce uint64) types.Message {
+	msg := types.NewMessage(new_tx_as_input.From(), new_tx_as_input.To(), new_nonce, new_tx_as_input.Value(), new_tx_as_input.Gas(), new_tx_as_input.GasPrice(), new_tx_as_input.Data(), new_tx_as_input.AccessList(), true)
+	return msg
+}
 func (aa *AdversaryAccount) get_txs() (*types.Message, *types.Message) {
 	return aa.new_deploy_tx, aa.new_tx
 }
+func (aa *AdversaryAccount) get_txs_with_init_call() (*types.Message, *types.Message, *types.Message) {
+	return aa.new_deploy_tx, aa.new_tx, aa.new_init_func_call_tx
+}
 
+//useless function. Can be removed
 func (aa *AdversaryAccount) store_contract_address(addr common.Address) {
 	aa.temp_contract_addresses = append(aa.temp_contract_addresses, addr)
 }
@@ -378,7 +447,58 @@ func replace_hardcoded_address_in_data(address_in common.Address, address_out co
 	}
 	return parsed_data
 }
-func Get_contract_init_data(contract common.Address) (common.Hash, common.Hash, common.Hash, byte, common.Address, []byte, error) {
+
+// func Get_contract_init_data(contract common.Address) (common.Hash, common.Hash, common.Hash, byte, common.Address, []byte, error) {
+// 	var r1 common.Hash
+// 	var r2 common.Hash
+// 	var r3 common.Hash
+// 	var r4 byte
+// 	var r5 common.Address
+// 	var r6 []byte
+// 	db, _ := bitcask.Open("contract_db")
+// 	defer db.Close()
+// 	if val, ok := db.Get(contract.Bytes()); ok == nil {
+// 		r1 = common.BytesToHash(val[0:32])
+// 		r2 = common.BytesToHash(val[32:64])
+// 		r3 = common.BytesToHash(val[64:96])
+// 		r4 = val[96]
+// 		r5 = common.BytesToAddress(val[97:117])
+// 		r6 = val[117:]
+// 	} else {
+// 		return r1, r2, r3, r4, r5, r6, errors.New("no data found")
+// 	}
+// 	return r1, r2, r3, r4, r5, r6, nil
+// }
+
+// func Set_contract_init_data(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, is_create_action byte, call_address common.Address, sender common.Address) {
+// 	db, _ := bitcask.Open("contract_db")
+// 	defer db.Close()
+// 	parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
+// 	var raw_data []byte
+// 	raw_data = append(raw_data, gas_price.Bytes()...)
+// 	raw_data = append(raw_data, gas.Bytes()...)
+// 	raw_data = append(raw_data, value.Bytes()...)
+// 	raw_data = append(raw_data, is_create_action)
+// 	raw_data = append(raw_data, call_address.Bytes()...)
+// 	raw_data = append(raw_data, parsed_data...)
+// 	db.Put(contract.Bytes(), raw_data)
+// }
+
+func Set_contract_init_data_with_init_call(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, is_create_action byte, call_address common.Address, sender common.Address) {
+	db, _ := bitcask.Open("contract_db")
+	defer db.Close()
+	parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
+	var raw_data []byte
+	raw_data = append(raw_data, gas_price.Bytes()...)
+	raw_data = append(raw_data, gas.Bytes()...)
+	raw_data = append(raw_data, value.Bytes()...)
+	raw_data = append(raw_data, is_create_action)
+	raw_data = append(raw_data, call_address.Bytes()...)
+	raw_data = append(raw_data, make([]byte, 32)...)
+	raw_data = append(raw_data, parsed_data...)
+	db.Put(contract.Bytes(), raw_data)
+}
+func Get_contract_init_data_with_init_call(contract common.Address) (common.Hash, common.Hash, common.Hash, byte, common.Address, []byte, error) {
 	var r1 common.Hash
 	var r2 common.Hash
 	var r3 common.Hash
@@ -393,22 +513,65 @@ func Get_contract_init_data(contract common.Address) (common.Hash, common.Hash, 
 		r3 = common.BytesToHash(val[64:96])
 		r4 = val[96]
 		r5 = common.BytesToAddress(val[97:117])
-		r6 = val[117:]
+		is_init_call_stored := val[117:149]
+		is_init_call_stored_int := new(big.Int)
+		is_init_call_stored_int.SetBytes(is_init_call_stored)
+		if is_init_call_stored_int.Cmp(big.NewInt(0)) == 0 {
+			r6 = val[149:]
+		} else {
+			r6 = val[149 : 149+is_init_call_stored_int.Int64()]
+		}
 	} else {
-		return r1, r2, r3, r4, r5, r6, errors.New("No data found")
+		return r1, r2, r3, r4, r5, r6, errors.New("no data found")
 	}
 	return r1, r2, r3, r4, r5, r6, nil
 }
-func Set_contract_init_data(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, is_create_action byte, call_address common.Address, sender common.Address) {
+func Check_and_set_contract_init_func_call_data_with_init_call(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, sender common.Address) bool {
 	db, _ := bitcask.Open("contract_db")
 	defer db.Close()
-	parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
-	var raw_data []byte
-	raw_data = append(raw_data, gas_price.Bytes()...)
-	raw_data = append(raw_data, gas.Bytes()...)
-	raw_data = append(raw_data, value.Bytes()...)
-	raw_data = append(raw_data, is_create_action)
-	raw_data = append(raw_data, call_address.Bytes()...)
-	raw_data = append(raw_data, parsed_data...)
-	db.Put(contract.Bytes(), raw_data)
+	if val, ok := db.Get(contract.Bytes()); ok == nil {
+		is_init_call_stored := val[117:149]
+		is_init_call_stored_int := new(big.Int)
+		is_init_call_stored_int.SetBytes(is_init_call_stored)
+		if is_init_call_stored_int.Cmp(big.NewInt(0)) == 0 {
+			r6 := val[149:]
+			is_init_call_stored_bytes := big.NewInt(int64(len(r6))).Bytes()
+			raw_data := val
+			for i := 0; i < 32; i++ {
+				raw_data[117+i] = is_init_call_stored_bytes[i]
+			}
+			parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
+			raw_data = append(raw_data, gas_price.Bytes()...)
+			raw_data = append(raw_data, gas.Bytes()...)
+			raw_data = append(raw_data, value.Bytes()...)
+			raw_data = append(raw_data, parsed_data...)
+			db.Put(contract.Bytes(), raw_data)
+			return true
+		}
+	}
+	return false
+}
+func Get_contract_init_func_call_with_init_call(contract common.Address) (common.Hash, common.Hash, common.Hash, []byte, error) {
+	var r1 common.Hash
+	var r2 common.Hash
+	var r3 common.Hash
+	var r6 []byte
+	db, _ := bitcask.Open("contract_db")
+	defer db.Close()
+	if val, ok := db.Get(contract.Bytes()); ok == nil {
+		is_init_call_stored := val[117:149]
+		is_init_call_stored_int := new(big.Int)
+		is_init_call_stored_int.SetBytes(is_init_call_stored)
+		if is_init_call_stored_int.Cmp(big.NewInt(0)) == 0 {
+			return r1, r2, r3, r6, errors.New("no data found")
+		} else {
+			r1 = common.BytesToHash(val[149+is_init_call_stored_int.Int64()+0 : 149+is_init_call_stored_int.Int64()+32])
+			r2 = common.BytesToHash(val[149+is_init_call_stored_int.Int64()+32 : 149+is_init_call_stored_int.Int64()+64])
+			r3 = common.BytesToHash(val[149+is_init_call_stored_int.Int64()+64 : 149+is_init_call_stored_int.Int64()+96])
+			r6 = val[149+is_init_call_stored_int.Int64()+96:]
+		}
+	} else {
+		return r1, r2, r3, r6, errors.New("no data found")
+	}
+	return r1, r2, r3, r6, nil
 }

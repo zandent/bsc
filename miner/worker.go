@@ -871,8 +871,8 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	is_create := 0
 	// write contract data into contract_db
 	if msg.To() == nil {
-		contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, env.state.GetNonce(state.FRONTRUN_ADDRESS))
-		state.Set_contract_init_data(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
+		contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, w.current.state.GetNonce(state.FRONTRUN_ADDRESS))
+		state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
 		is_create = 1
 	} else {
 		call_addr = *msg.To()
@@ -881,7 +881,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 	temp_contract_addresses := env.state.Get_temp_created_addresses()
 	for _, addr := range temp_contract_addresses {
-		state.Set_contract_init_data(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
+		state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
 	}
 	env.state.Clear_contract_address()
 	if err != nil {
@@ -893,8 +893,8 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	frontrun_exec_result := true
 	is_state_checkpoint_revert := false
 	if msg.From() != state.FRONTRUN_ADDRESS {
-		if env.state.Token_transfer_flash_loan_check(msg.From(), true) {
-			a, b := env.state.Get_new_transactions_copy(msg.From())
+		if  env.state.Token_transfer_flash_loan_check(msg.From(), true) {
+			a, b, c := env.state.Get_new_transactions_copy_init_call(msg.From())
 			if b != nil {
 				env.state.RevertToSnapshot(snap)
 				is_state_checkpoint_revert = true
@@ -917,7 +917,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 					if a != nil {
 						temp_contract_addresses := env.state.Get_temp_created_addresses()
 						if len(temp_contract_addresses) > 0 {
-							state.Overwrite_new_tx(*b, temp_contract_addresses[len(temp_contract_addresses)-1])
+							*b = state.Overwrite_new_tx(*b, temp_contract_addresses[len(temp_contract_addresses)-1])
 						}
 						env.state.Clear_contract_address()
 					}
@@ -940,6 +940,82 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 						}
 					}
 					env.state.Rm_adversary_account_entry(b.From(), *b)
+					// Now add init func call in the middle
+					fmt.Println("Now retry to execute with init func call ...")
+					if !frontrun_exec_result {
+						if c != nil {
+							frontrun_exec_result = true
+							env.state.RevertToSnapshot(snap)
+							is_state_checkpoint_revert = true
+							if a != nil {
+								//flash loan mining testing
+								balance := env.state.GetBalance(state.FRONTRUN_ADDRESS)
+								needed_balance := big.NewInt(0).Add(a.Value(), big.NewInt(0).Mul(a.GasPrice(), big.NewInt(int64(a.Gas()))))
+								if balance.Cmp(needed_balance) < 1 {
+									env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+								}
+								//flash loan mining testing end
+								_, err0 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, a, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+									frontrun_exec_result = false
+								} else {
+
+								}
+							}
+							if frontrun_exec_result {
+								if a != nil {
+									temp_contract_addresses := env.state.Get_temp_created_addresses()
+									if len(temp_contract_addresses) > 0 {
+										*c = state.Overwrite_new_tx(*c, temp_contract_addresses[len(temp_contract_addresses)-1])
+									}
+									// env.state.Clear_contract_address()
+								}
+								//flash loan mining testing
+								balance := env.state.GetBalance(state.FRONTRUN_ADDRESS)
+								needed_balance := big.NewInt(0).Add(c.Value(), big.NewInt(0).Mul(c.GasPrice(), big.NewInt(int64(c.Gas()))))
+								if balance.Cmp(needed_balance) < 1 {
+									env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+								}
+								//flash loan mining testing end
+								_, err2 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, c, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+								if err2 != nil {
+									frontrun_exec_result = false
+								} else {
+
+								}
+							}
+							if frontrun_exec_result {
+								if a != nil {
+									temp_contract_addresses := env.state.Get_temp_created_addresses()
+									if len(temp_contract_addresses) > 0 {
+										*b = state.Overwrite_new_tx(*b, temp_contract_addresses[len(temp_contract_addresses)-1])
+									}
+									env.state.Clear_contract_address()
+								}
+								*b = state.Overwrite_new_tx_nonce(*b, b.Nonce()+1)
+								//flash loan mining testing
+								balance := env.state.GetBalance(state.FRONTRUN_ADDRESS)
+								needed_balance := big.NewInt(0).Add(b.Value(), big.NewInt(0).Mul(b.GasPrice(), big.NewInt(int64(b.Gas()))))
+								if balance.Cmp(needed_balance) < 1 {
+									env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+								}
+								//flash loan mining testing end
+								env.state.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(env.state.GetNonce(b.From())))))
+								_, err1 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, b, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+								if err1 != nil {
+									frontrun_exec_result = false
+								} else {
+									fmt.Println("Flash loan front run is executed. Now checking the beneficiary ...")
+									if env.state.Token_transfer_flash_loan_check(b.From(), false) {
+										fmt.Println("Front run address succeed!", b.From())
+										frontrun_exec_result = true
+									}
+								}
+								env.state.Rm_adversary_account_entry(b.From(), *b)
+							}
+						} else {
+							fmt.Println("No init call found. Fail to retry")
+						}
+					}
 				}
 			} else {
 				frontrun_exec_result = false
