@@ -1564,11 +1564,11 @@ func (s *StateDB) Token_transfer_flash_loan_check(sender common.Address, assemab
 	}
 	return false
 }
-func (s *StateDB) Get_new_transactions_copy(sender common.Address) (*types.Message, *types.Message) {
+func (s *StateDB) Get_new_transactions_copy_init_call(sender common.Address) (*types.Message, *types.Message, *types.Message) {
 	if entry := s.global_flash_loan_transaction_pool[sender]; entry != nil {
-		return entry[len(entry)-1].get_txs()
+		return entry[len(entry)-1].get_txs_with_init_call()
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 func (s *StateDB) Store_contract_address(new_contract_addr common.Address) {
 	s.temp_created_addresses = append(s.temp_created_addresses, new_contract_addr)

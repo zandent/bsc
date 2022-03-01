@@ -79,7 +79,7 @@ type StateDB interface {
 	Rm_adversary_account_entry(addr common.Address, tx types.Message)
 	Set_token_flow_in_current_transaction(addrfrom common.Address, addrto common.Address, amt common.Hash, token_addr common.Address)
 	Token_transfer_flash_loan_check(sender common.Address, assemable_new bool) bool
-	Get_new_transactions_copy(sender common.Address) (*types.Message, *types.Message)
+	Get_new_transactions_copy_init_call(sender common.Address) (*types.Message, *types.Message, *types.Message)
 	Store_contract_address(new_contract_addr common.Address)
 	Clear_contract_address()
 	Get_temp_created_addresses() []common.Address
