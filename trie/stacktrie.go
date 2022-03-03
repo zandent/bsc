@@ -190,9 +190,10 @@ const (
 // TryUpdate inserts a (key, value) pair into the stack trie
 func (st *StackTrie) TryUpdate(key, value []byte) error {
 	k := keybytesToHex(key)
-	if len(value) == 0 {
-		panic("deletion not supported")
-	}
+	// flash loan
+	// if len(value) == 0 {
+	// 	panic("deletion not supported")
+	// }
 	st.insert(k[:len(k)-1], value)
 	return nil
 }

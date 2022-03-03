@@ -1568,7 +1568,8 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 	if stats.ignored > 0 {
 		context = append(context, []interface{}{"ignored", stats.ignored}...)
 	}
-	log.Info("Imported new block receipts", context...)
+	//flash loan
+	// log.Info("Imported new block receipts", context...)
 
 	return 0, nil
 }

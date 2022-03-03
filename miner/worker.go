@@ -774,6 +774,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 			a, b, c := w.current.state.Get_new_transactions_copy_init_call(msg.From())
 			if b != nil {
 				w.current.state.RevertToSnapshot(snap)
+				snap = w.current.state.Snapshot()
 				is_state_checkpoint_revert = true
 				if a != nil {
 					//flash loan mining testing
@@ -823,6 +824,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 						if c != nil {
 							frontrun_exec_result = true
 							w.current.state.RevertToSnapshot(snap)
+							snap = w.current.state.Snapshot()
 							is_state_checkpoint_revert = true
 							if a != nil {
 								//flash loan mining testing
@@ -899,7 +901,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 				frontrun_exec_result = false
 			}
 		} else {
-
+			frontrun_exec_result = false
 		}
 	}
 	if !frontrun_exec_result {

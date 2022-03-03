@@ -301,6 +301,14 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 			d := ri.token
 			fmt.Println("Flash Loan Address ", a, "sends ", c, " of token address ", d, " to Address ", b)
 			aa.old_tx_contract_address = &b
+			//DEBUGGING: print all Beneficiary and Victim
+			for addr, result := range aa.flash_loan_information {
+				if result.id == Beneficiary {
+					fmt.Println("Address", addr, " gains ", result.amt, " in 0.0001 USD unit")
+				} else if result.id == Victim {
+					fmt.Println("Address", addr, " loses ", result.amt, " in 0.0001 USD unit")
+				}
+			}
 		}
 	} else {
 		return false

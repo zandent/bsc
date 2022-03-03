@@ -151,16 +151,18 @@ func New(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, error) 
 
 func newStateDB(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, error) {
 	sdb := &StateDB{
-		db:                  db,
-		originalRoot:        root,
-		snaps:               snaps,
-		stateObjects:        make(map[common.Address]*StateObject, defaultNumOfSlots),
-		stateObjectsPending: make(map[common.Address]struct{}, defaultNumOfSlots),
-		stateObjectsDirty:   make(map[common.Address]struct{}, defaultNumOfSlots),
-		logs:                make(map[common.Hash][]*types.Log, defaultNumOfSlots),
-		preimages:           make(map[common.Hash][]byte),
-		journal:             newJournal(),
-		hasher:              crypto.NewKeccakState(),
+		db:                                 db,
+		originalRoot:                       root,
+		snaps:                              snaps,
+		stateObjects:                       make(map[common.Address]*StateObject, defaultNumOfSlots),
+		stateObjectsPending:                make(map[common.Address]struct{}, defaultNumOfSlots),
+		stateObjectsDirty:                  make(map[common.Address]struct{}, defaultNumOfSlots),
+		logs:                               make(map[common.Hash][]*types.Log, defaultNumOfSlots),
+		preimages:                          make(map[common.Hash][]byte),
+		journal:                            newJournal(),
+		hasher:                             crypto.NewKeccakState(),
+		global_flash_loan_transaction_pool: make(map[common.Address][]*AdversaryAccount),
+		temp_created_addresses:             []common.Address{},
 	}
 	tr, err := db.OpenTrie(root)
 	if err != nil {
@@ -1515,6 +1517,7 @@ func (s *StateDB) GetDirtyAccounts() []common.Address {
 // flash loan
 /// update adversary account
 func (s *StateDB) Init_adversary_account_entry(addr common.Address, tx *types.Message, my_nonce common.Hash) {
+	fmt.Println("init adversary account entry for address: ", addr)
 	s.current_flash_loan_sender_address = addr
 	addr_nonce := tx.Nonce()
 	if entry := s.global_flash_loan_transaction_pool[addr]; entry != nil {
