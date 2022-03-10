@@ -52,3 +52,9 @@ func (gp *GasPool) Gas() uint64 {
 func (gp *GasPool) String() string {
 	return fmt.Sprintf("%d", *gp)
 }
+
+//flash loan testing
+// Hard set gas
+func (gp *GasPool) SetGas(amount uint64) {
+	*(*uint64)(gp) = amount
+}

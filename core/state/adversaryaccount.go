@@ -290,6 +290,7 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 		}
 	}
 	if len(beneficiary) == 0 {
+		fmt.Println("No beneficiary found")
 		return false
 	}
 	start, _ := aa.find_flash_loan_end_positions()
@@ -311,6 +312,7 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 			}
 		}
 	} else {
+		fmt.Println("No flash loan pattern found")
 		return false
 	}
 	found_in_beneficiary := false

@@ -2054,6 +2054,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 		statedb.StartPrefetcher("chain")
 
 		//Process block using the parent state as reference point
+		//flash loan
+		// fmt.Println("Processing block number: ", block.Number())
 		substart := time.Now()
 		statedb, receipts, logs, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig)
 		activeState = statedb

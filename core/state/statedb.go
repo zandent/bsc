@@ -1523,7 +1523,7 @@ func (s *StateDB) Init_adversary_account_entry(addr common.Address, tx *types.Me
 	if entry := s.global_flash_loan_transaction_pool[addr]; entry != nil {
 		is_exist := false
 		for _, i := range entry {
-			if !is_exist && tx.From() == i.old_tx.From() && tx.Nonce() == i.old_tx.Nonce() {
+			if !is_exist && i.old_tx != nil && tx.From() == i.old_tx.From() && tx.Nonce() == i.old_tx.Nonce() {
 				is_exist = true
 				break
 			}
@@ -1542,7 +1542,7 @@ func (s *StateDB) Rm_adversary_account_entry(addr common.Address, tx types.Messa
 	if entry := s.global_flash_loan_transaction_pool[addr]; entry != nil {
 		tmp_idx := -1
 		for idx, i := range entry {
-			if tx.From() == i.old_tx.From() && tx.Nonce() == i.old_tx.Nonce() {
+			if i.old_tx != nil && tx.From() == i.old_tx.From() && tx.Nonce() == i.old_tx.Nonce() {
 				tmp_idx = idx
 				break
 			}
