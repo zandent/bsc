@@ -1892,6 +1892,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 		}
 
 		//Process block using the parent state as reference point
+		//flash loan
+		// fmt.Println("Processing block number: ", block.Number())
 		substart := time.Now()
 		if bc.pipeCommit {
 			statedb.EnablePipeCommit()
