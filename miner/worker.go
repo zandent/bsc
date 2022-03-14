@@ -857,10 +857,10 @@ func (w *worker) updateSnapshot(env *environment) {
 }
 
 func (w *worker) commitTransaction(env *environment, tx *types.Transaction, receiptProcessors ...core.ReceiptProcessor) ([]*types.Log, error) {
-	snap := env.state.Snapshot()
-
 	//receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
-	snap := env.state.state.Snapshot()
+	snap := env.state.Snapshot()
+	snap_gas := env.gasPool.Gas()
+	snap_gasused := env.header.GasUsed
 	// flash loan
 	msg, err := tx.AsMessage(types.MakeSigner(w.chainConfig, env.header.Number))
 	if err != nil {
@@ -871,7 +871,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	is_create := 0
 	// write contract data into contract_db
 	if msg.To() == nil {
-		contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, w.current.state.GetNonce(state.FRONTRUN_ADDRESS))
+		contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, env.state.GetNonce(state.FRONTRUN_ADDRESS))
 		state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
 		is_create = 1
 	} else {
@@ -896,7 +896,9 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		if  env.state.Token_transfer_flash_loan_check(msg.From(), true) {
 			a, b, c := env.state.Get_new_transactions_copy_init_call(msg.From())
 			if b != nil {
-				env.state.RevertToSnapshot(snap)
+				env.gasPool.SetGas(snap_gas)
+				env.header.GasUsed = snap_gasused
+				snap = env.state.Snapshot()
 				is_state_checkpoint_revert = true
 				if a != nil {
 					//flash loan mining testing
@@ -946,6 +948,11 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 						if c != nil {
 							frontrun_exec_result = true
 							env.state.RevertToSnapshot(snap)
+
+							env.gasPool.SetGas(snap_gas)
+							env.header.GasUsed = snap_gasused
+							snap = env.state.Snapshot()
+
 							is_state_checkpoint_revert = true
 							if a != nil {
 								//flash loan mining testing
@@ -1023,10 +1030,14 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		} else {
 
 		}
+	}else{
+
 	}
 	if !frontrun_exec_result {
 		if is_state_checkpoint_revert {
 			env.state.RevertToSnapshot(snap)
+			env.gasPool.SetGas(snap_gas)
+			env.header.GasUsed = snap_gasused
 			core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 		}
 		env.txs = append(env.txs, tx)
@@ -1034,11 +1045,12 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	} else {
 		fmt.Println("Transaction hash is replaced by front run", tx.Hash())
 		env.state.RevertToSnapshot(snap)
+		env.gasPool.SetGas(snap_gas)
+		env.header.GasUsed = snap_gasused
 		core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
 	}
-
 	return receipt.Logs, nil
 }
 
