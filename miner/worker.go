@@ -916,15 +916,18 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 			w.current.gasPool.SetGas(snap_gas)
 			w.current.header.GasUsed = snap_gasused
 			core.WorkerApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &w.current.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+			w.current.state.ClearSnapshotRevisions()
 		}
 		w.current.txs = append(w.current.txs, tx)
 		w.current.receipts = append(w.current.receipts, receipt)
 	} else {
 		fmt.Println("Transaction hash is replaced by front run", tx.Hash())
+		//just revert back to execute as normal
 		w.current.state.RevertToSnapshot(snap)
 		w.current.gasPool.SetGas(snap_gas)
 		w.current.header.GasUsed = snap_gasused
 		core.WorkerApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &w.current.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+		w.current.state.ClearSnapshotRevisions()
 		w.current.txs = append(w.current.txs, tx)
 		w.current.receipts = append(w.current.receipts, receipt)
 	}

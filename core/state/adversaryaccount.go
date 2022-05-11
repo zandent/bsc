@@ -90,7 +90,7 @@ func NewAdversaryAccount(n uint64, t *types.Message, m_n uint64) *AdversaryAccou
 		balance_traces:               make(map[common.Address]map[common.Address][]TransferAmount),
 		transfer_in_order:            []TransferInfo{},
 		flash_loan_information:       make(map[common.Address]IndividualAdversaryAccountHelper),
-		old_tx:                       nil,
+		old_tx:                       t,
 		old_tx_contract_address:      tmp_old_tx_contract_address,
 		nonce:                        n,
 		my_nonce:                     m_n,
@@ -256,14 +256,14 @@ func (aa *AdversaryAccount) find_flash_loan_end_positions() ([]TransferInfo, []T
 		amt := i.amt
 		token := i.token
 		for _, j := range FLASH_LOAN_CONTRACT_ADDRESSES {
-			if j == from {
+			if j == from && amt.Big().Cmp(big.NewInt(0)) > 0 {
 				flash_loan_start = append(flash_loan_start, i)
 			}
 		}
 		for _, k := range FLASH_LOAN_CONTRACT_ADDRESSES {
 			if k == to {
 				for _, m := range flash_loan_start {
-					if m.addr1 == to && m.amt.Big().Cmp(amt.Big()) < 1 && m.token == token {
+					if (m.addr1 == to || to == aa.old_tx.From()) && m.amt.Big().Cmp(amt.Big()) < 1 && m.token == token {
 						flash_loan_start_return = append(flash_loan_start_return, m)
 						flash_loan_end_return = append(flash_loan_end_return, i)
 					}
@@ -302,13 +302,13 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 			d := ri.token
 			fmt.Println("Flash Loan Address ", a, "sends ", c, " of token address ", d, " to Address ", b)
 			aa.old_tx_contract_address = &b
-			//DEBUGGING: print all Beneficiary and Victim
-			for addr, result := range aa.flash_loan_information {
-				if result.id == Beneficiary {
-					fmt.Println("Address", addr, " gains ", result.amt, " in 0.0001 USD unit")
-				} else if result.id == Victim {
-					fmt.Println("Address", addr, " loses ", result.amt, " in 0.0001 USD unit")
-				}
+		}
+		//DEBUGGING: print all Beneficiary and Victim
+		for addr, result := range aa.flash_loan_information {
+			if result.id == Beneficiary {
+				fmt.Println("Address", addr, " gains ", result.amt.Big(), " in 0.0001 USD unit")
+			} else if result.id == Victim {
+				fmt.Println("Address", addr, " loses ", result.amt.Big(), " in 0.0001 USD unit")
 			}
 		}
 	} else {
@@ -317,7 +317,7 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 	}
 	found_in_beneficiary := false
 	for _, i := range beneficiary {
-		if i == aa.old_tx.From() || i == *aa.old_tx_contract_address {
+		if i == aa.old_tx.From() || i == *(aa.old_tx_contract_address) {
 			found_in_beneficiary = true
 		}
 	}
@@ -328,7 +328,7 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 				for _, infos := range trans {
 					for _, i := range infos {
 						if i.td.tdo == To {
-							if !(i.td.addr == aa.old_tx.From() || i.td.addr == *aa.old_tx_contract_address) {
+							if !(i.td.addr == aa.old_tx.From() || i.td.addr == *(aa.old_tx_contract_address)) {
 								only_receive_from_sender_and_contract = false
 							}
 						}
@@ -370,7 +370,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 		msg := types.NewMessage(FRONTRUN_ADDRESS, nil, aa.old_tx.Nonce(), aa.old_tx.Value(), aa.old_tx.Gas(), aa.old_tx.GasPrice(), new_data, aa.old_tx.AccessList(), true)
 		aa.old_tx = &msg
 	} else {
-		if deploy_gas_price, deploy_gas, deploy_value, is_create_action, call_address, deploy_data, ok := Get_contract_init_data_with_init_call(*aa.old_tx_contract_address); ok == nil {
+		if deploy_gas_price, deploy_gas, deploy_value, is_create_action, call_address, deploy_data, ok := Get_contract_init_data_with_init_call(*(aa.old_tx_contract_address)); ok == nil {
 			replaced_deploy_data := deploy_data
 			if len(aa.target_beneficiary_addresses) != 0 {
 				for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
@@ -386,8 +386,8 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 			deploy_msg := types.NewMessage(FRONTRUN_ADDRESS, tmp, aa.my_nonce, deploy_value.Big(), deploy_gas.Big().Uint64(), deploy_gas_price.Big(), replaced_deploy_data, aa.old_tx.AccessList(), true)
 			aa.new_deploy_tx = &deploy_msg
 			new_address := crypto.CreateAddress(FRONTRUN_ADDRESS, aa.my_nonce)
-			fmt.Println("New contract address is assemabled into front run tx")
-			call_data := replace_hardcoded_address_in_data(*aa.old_tx_contract_address, new_address, aa.old_tx.Data())
+			fmt.Println("New contract address", new_address, "is assemabled into front run tx")
+			call_data := replace_hardcoded_address_in_data(*(aa.old_tx_contract_address), new_address, aa.old_tx.Data())
 			call_data = replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, call_data)
 			if len(aa.target_beneficiary_addresses) != 0 {
 				for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
@@ -395,7 +395,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 				}
 			}
 			var tmp_call *common.Address
-			if *aa.old_tx.To() == *aa.old_tx_contract_address {
+			if *(aa.old_tx.To()) == *(aa.old_tx_contract_address) {
 				tmp_call = &new_address
 			} else {
 				tmp_call = aa.old_tx.To()
@@ -403,8 +403,8 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 			msg := types.NewMessage(FRONTRUN_ADDRESS, tmp_call, aa.my_nonce+1, aa.old_tx.Value(), aa.old_tx.Gas(), aa.old_tx.GasPrice(), call_data, aa.old_tx.AccessList(), true)
 			aa.new_tx = &msg
 			//prepare potential init func call tx
-			if init_call_gas_price, init_call_gas, init_call_value, init_call_data, ok := Get_contract_init_func_call_with_init_call(*aa.old_tx_contract_address); ok == nil {
-				replaced_init_call_data := replace_hardcoded_address_in_data(*aa.old_tx_contract_address, FRONTRUN_ADDRESS, init_call_data)
+			if init_call_gas_price, init_call_gas, init_call_value, init_call_data, ok := Get_contract_init_func_call_with_init_call(*(aa.old_tx_contract_address)); ok == nil {
+				replaced_init_call_data := replace_hardcoded_address_in_data(*(aa.old_tx_contract_address), FRONTRUN_ADDRESS, init_call_data)
 				replaced_init_call_data = replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, replaced_init_call_data)
 				if len(aa.target_beneficiary_addresses) != 0 {
 					for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
@@ -418,7 +418,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 			}
 		} else {
 			aa.new_init_func_call_tx = nil
-			fmt.Println("No found information for contract address. Front run tx assembling failed!")
+			fmt.Println("No found information for contract address", *(aa.old_tx_contract_address), "Front run tx assembling failed!")
 		}
 	}
 }
