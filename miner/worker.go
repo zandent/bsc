@@ -1039,6 +1039,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 			env.gasPool.SetGas(snap_gas)
 			env.header.GasUsed = snap_gasused
 			core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+			env.state.ClearSnapshotRevisions()
 		}
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
@@ -1046,8 +1047,9 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		fmt.Println("Transaction hash is replaced by front run", tx.Hash())
 		env.state.RevertToSnapshot(snap)
 		env.gasPool.SetGas(snap_gas)
-		env.header.GasUsed = snap_gasused
+		env.header.GasUsed = snap_gasused		
 		core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+		env.state.ClearSnapshotRevisions()
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
 	}
