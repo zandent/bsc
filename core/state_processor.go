@@ -452,7 +452,83 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 }
 
 
+
+// flash loan archive node testing process
+func (p *StateProcessor) Flash_Loan_Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (*state.StateDB, types.Receipts, []*types.Log, uint64, error) {
+	fmt.Println("Processing block number containing flash loan: ", block.Number())
+	var (
+		usedGas = new(uint64)
+		header  = block.Header()
+		allLogs []*types.Log
+		gp      = new(GasPool).AddGas(block.GasLimit())
+	)
+	signer := types.MakeSigner(p.bc.chainConfig, block.Number())
+	statedb.TryPreload(block, signer)
+	var receipts = make([]*types.Receipt, 0)
+	// Mutate the block and state according to any hard-fork specs
+	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
+		misc.ApplyDAOHardFork(statedb)
+	}
+	// Handle upgrade build-in system contract code
+	systemcontracts.UpgradeBuildInSystemContract(p.config, block.Number(), statedb)
+
+	// blockContext := NewEVMBlockContext(header, p.bc, nil)
+	// vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)
+
+	txNum := len(block.Transactions())
+	// Iterate over and process the individual transactions
+	posa, isPoSA := p.engine.(consensus.PoSA)
+	commonTxs := make([]*types.Transaction, 0, txNum)
+
+	// initilise bloom processors
+	bloomProcessors := NewAsyncReceiptBloomGenerator(txNum)
+
+	// usually do have two tx, one for validator set contract, another for system reward contract.
+	systemTxs := make([]*types.Transaction, 0, 2)
+	for i, tx := range block.Transactions() {
+		if tx.Hash().Hex() == "0xa9860033322aefa39538db51a1ed47cfae7e4b161254d53dbf735f1f16502710" {
+			fmt.Println("Flash loan tx found!: ", tx.Hash())
+		} else {
+			continue
+		}
+		if isPoSA {
+			if isSystemTx, err := posa.IsSystemTransaction(tx, block.Header()); err != nil {
+				return statedb, nil, nil, 0, err
+			} else if isSystemTx {
+				systemTxs = append(systemTxs, tx)
+				continue
+			}
+		}
+
+		msg, err := tx.AsMessage(signer)
+		if err != nil {
+			return statedb, nil, nil, 0, err
+		}
+		statedb.Prepare(tx.Hash(), i)
+		receipt, err := flash_loan_prove_transaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, bloomProcessors)
+		if err != nil {
+			return statedb, nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
+		}
+
+		commonTxs = append(commonTxs, tx)
+		receipts = append(receipts, receipt)
+	}
+	bloomProcessors.Close()
+
+	// // Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
+	// err := p.engine.Finalize(p.bc, header, statedb, &commonTxs, block.Uncles(), &receipts, &systemTxs, usedGas)
+	// if err != nil {
+	// 	return statedb, receipts, allLogs, *usedGas, err
+	// }
+	for _, receipt := range receipts {
+		allLogs = append(allLogs, receipt.Logs...)
+	}
+
+	return statedb, receipts, allLogs, *usedGas, nil
+}
+
 // flash loan archive node testing
+/ flash loan archive node testing
 
 func flash_loan_prove_transaction
 	(msg types.Message, config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash common.Hash, tx *types.Transaction, usedGas *uint64, evm *vm.EVM, receiptProcessors ...ReceiptProcessor) (*types.Receipt, error) {
@@ -638,8 +714,7 @@ func flash_loan_prove_transaction
 		*usedGas = snap_gasused
 		// WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, msg, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
 	}
-
-	return receipt.Logs, nil
+	return receipt, nil
 }
 func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash common.Hash, tx *types.Transaction, usedGas *uint64, evm *vm.EVM, receiptProcessors ...ReceiptProcessor) (*types.Receipt, error) {
 	// Create a new context to be used in the EVM environment.
@@ -737,11 +812,11 @@ func applyFrontrunTransaction(msg types.Message, config *params.ChainConfig, bc 
 	var root []byte
 	//flash loan
 	//remove the snapshot removement
-	// if config.IsByzantium(header.Number) {
-	// 	statedb.Finalise(true)
-	// } else {
-	// 	root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
-	// }
+	if config.IsByzantium(header.Number) {
+		statedb.FinaliseForFrontRun(true)
+	} else {
+		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+	}
 	*usedGas += result.UsedGas
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used
