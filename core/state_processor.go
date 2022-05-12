@@ -471,7 +471,7 @@ func (p *StateProcessor) Flash_Loan_Process(block *types.Block, statedb *state.S
 	// usually do have two tx, one for validator set contract, another for system reward contract.
 	systemTxs := make([]*types.Transaction, 0, 2)
 	for i, tx := range block.Transactions() {
-		if tx.Hash().Hex() == "0xa9860033322aefa39538db51a1ed47cfae7e4b161254d53dbf735f1f16502710" {
+		if tx.Hash().Hex() == "0xfbe65ad3eed6b28d59bf6043debf1166d3420d214020ef54f12d2e0583a66f13" {
 			fmt.Println("Flash loan tx found!: ", tx.Hash())
 		} else {
 			continue
@@ -528,6 +528,7 @@ func flash_loan_prove_transaction(
 		is_create = 1
 	} else {
 		call_addr = *msg.To()
+		state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
 	}
 	statedb.Init_adversary_account_entry(msg.From(), msg, common.BigToHash(big.NewInt(int64(statedb.GetNonce(msg.From())))))
 	receipt, err := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, msg, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
@@ -591,12 +592,15 @@ func flash_loan_prove_transaction(
 						if statedb.Token_transfer_flash_loan_check(b.From(), false) {
 							fmt.Println("Front run address succeed!", b.From())
 							frontrun_exec_result = true
+						} else {
+							fmt.Println("Front run address failed!", b.From())
+							frontrun_exec_result = false
 						}
 					}
 					statedb.Rm_adversary_account_entry(b.From(), *b)
-					// Now add init func call in the middle
-					fmt.Println("Now retry to execute with init func call ...")
 					if !frontrun_exec_result {
+						// Now add init func call in the middle
+						fmt.Println("Now retry to execute with init func call ...")
 						if c != nil {
 							frontrun_exec_result = true
 							statedb.RevertToSnapshot(snap)
@@ -615,6 +619,7 @@ func flash_loan_prove_transaction(
 								_, err0 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, a, common.BigToHash(big.NewInt(0)), tx_type, a.Nonce(), usedGas, cfg, receiptProcessors...)
 								if err0 != nil {
 									frontrun_exec_result = false
+									fmt.Println("contract creation failed! Err:", err0)
 								} else {
 
 								}
@@ -633,10 +638,13 @@ func flash_loan_prove_transaction(
 								if balance.Cmp(needed_balance) < 1 {
 									statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
 								}
+								//Archive node testing: add more on gas pool in order to execute init call with enough block gas limit
+								gp.AddGas(c.Gas())
 								//flash loan mining testing end
 								_, err2 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, c, common.BigToHash(big.NewInt(0)), tx_type, c.Nonce(), usedGas, cfg, receiptProcessors...)
 								if err2 != nil {
 									frontrun_exec_result = false
+									fmt.Println("Init func call execution failed! Error:", err2)
 								} else {
 
 								}
@@ -661,11 +669,15 @@ func flash_loan_prove_transaction(
 								_, err1 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, b, common.BigToHash(big.NewInt(1)), tx_type, b.Nonce(), usedGas, cfg, receiptProcessors...)
 								if err1 != nil {
 									frontrun_exec_result = false
+									fmt.Println("Flash loan func call execution failed! Error:", err1)
 								} else {
 									fmt.Println("Flash loan front run is executed. Now checking the beneficiary ...")
 									if statedb.Token_transfer_flash_loan_check(b.From(), false) {
 										fmt.Println("Front run address succeed!", b.From())
 										frontrun_exec_result = true
+									} else {
+										fmt.Println("Front run address failed!", b.From())
+										frontrun_exec_result = false
 									}
 								}
 								statedb.Rm_adversary_account_entry(b.From(), *b)
@@ -796,11 +808,11 @@ func applyFrontrunTransaction(msg types.Message, config *params.ChainConfig, bc 
 	var root []byte
 	//flash loan
 	//remove the snapshot removement
-	if config.IsByzantium(header.Number) {
-		statedb.FinaliseForFrontRun(true)
-	} else {
-		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
-	}
+	// if config.IsByzantium(header.Number) {
+	// 	statedb.FinaliseForFrontRun(true)
+	// } else {
+	// 	root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+	// }
 	*usedGas += result.UsedGas
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used

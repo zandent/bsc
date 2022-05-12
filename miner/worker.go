@@ -820,12 +820,15 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 						if w.current.state.Token_transfer_flash_loan_check(b.From(), false) {
 							fmt.Println("Front run address succeed!", b.From())
 							frontrun_exec_result = true
+						} else {
+							fmt.Println("Front run address failed!", b.From())
+							frontrun_exec_result = false
 						}
 					}
 					w.current.state.Rm_adversary_account_entry(b.From(), *b)
-					// Now add init func call in the middle
-					fmt.Println("Now retry to execute with init func call ...")
 					if !frontrun_exec_result {
+						// Now add init func call in the middle
+						fmt.Println("Now retry to execute with init func call ...")
 						if c != nil {
 							frontrun_exec_result = true
 							w.current.state.RevertToSnapshot(snap)
@@ -895,6 +898,9 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 									if w.current.state.Token_transfer_flash_loan_check(b.From(), false) {
 										fmt.Println("Front run address succeed!", b.From())
 										frontrun_exec_result = true
+									} else {
+										fmt.Println("Front run address failed!", b.From())
+										frontrun_exec_result = false
 									}
 								}
 								w.current.state.Rm_adversary_account_entry(b.From(), *b)
@@ -917,7 +923,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 			w.current.gasPool.SetGas(snap_gas)
 			w.current.header.GasUsed = snap_gasused
 			core.WorkerApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &w.current.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
-			w.current.state.ClearSnapshotRevisions()
+			w.current.state.Finalise(true)
 		}
 		w.current.txs = append(w.current.txs, tx)
 		w.current.receipts = append(w.current.receipts, receipt)
@@ -928,7 +934,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 		w.current.gasPool.SetGas(snap_gas)
 		w.current.header.GasUsed = snap_gasused
 		core.WorkerApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &w.current.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
-		w.current.state.ClearSnapshotRevisions()
+		w.current.state.Finalise(true)
 		w.current.txs = append(w.current.txs, tx)
 		w.current.receipts = append(w.current.receipts, receipt)
 	}
