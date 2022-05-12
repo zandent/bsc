@@ -757,6 +757,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 		is_create = 1
 	} else {
 		call_addr = *msg.To()
+		state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
 	}
 	w.current.state.Init_adversary_account_entry(msg.From(), &msg, common.BigToHash(big.NewInt(int64(w.current.state.GetNonce(msg.From())))))
 	receipt, err := core.WorkerApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &w.current.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
