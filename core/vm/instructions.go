@@ -693,13 +693,18 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 		gas += params.CallStipend
 		bigVal = value.ToBig()
 	}
-
+	//flash loan
+	//DEBUGGING:print transfer
+	// if bigVal.Cmp(big.NewInt(0)) != 0 && (toAddr == common.HexToAddress("0xe576790f35a8cc854d45b9079259fe84f5294e07") || scope.Contract.CallerAddress == common.HexToAddress("0xe576790f35a8cc854d45b9079259fe84f5294e07")) {
+	// 	fmt.Println("CALL: from", scope.Contract.Address(), "to", toAddr, "val", bigVal)
+	// }
 	ret, returnGas, err := interpreter.evm.Call(scope.Contract, toAddr, args, gas, bigVal)
 
 	if err != nil {
 		temp.Clear()
 	} else {
-		interpreter.evm.StateDB.Set_token_flow_in_current_transaction(scope.Contract.CallerAddress, toAddr, common.BigToHash(bigVal), common.HexToAddress("0x0000000000000000000000000000000000000001"))
+		//flash loan
+		interpreter.evm.StateDB.Set_token_flow_in_current_transaction(scope.Contract.Address(), toAddr, common.BigToHash(bigVal), common.HexToAddress("0x0000000000000000000000000000000000000001"))
 		temp.SetOne()
 	}
 	stack.push(&temp)

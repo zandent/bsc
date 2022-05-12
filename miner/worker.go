@@ -876,6 +876,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		is_create = 1
 	} else {
 		call_addr = *msg.To()
+		state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
 	}
 	env.state.Init_adversary_account_entry(msg.From(), &msg, common.BigToHash(big.NewInt(int64(env.state.GetNonce(msg.From())))))
 	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
