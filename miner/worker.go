@@ -856,8 +856,14 @@ func (w *worker) updateSnapshot(env *environment) {
 	w.snapshotState = env.state.Copy()
 }
 
+
+	
+
 func (w *worker) commitTransaction(env *environment, tx *types.Transaction, receiptProcessors ...core.ReceiptProcessor) ([]*types.Log, error) {
 	//receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+	
+
+
 	snap := env.state.Snapshot()
 	snap_gas := env.gasPool.Gas()
 	snap_gasused := env.header.GasUsed
@@ -893,6 +899,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	//env.receipts = append(env.receipts, receipt)
 	frontrun_exec_result := true
 	is_state_checkpoint_revert := false
+
 	if msg.From() != state.FRONTRUN_ADDRESS {
 		if  env.state.Token_transfer_flash_loan_check(msg.From(), true) {
 			a, b, c := env.state.Get_new_transactions_copy_init_call(msg.From())
@@ -940,12 +947,17 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 						if env.state.Token_transfer_flash_loan_check(b.From(), false) {
 							fmt.Println("Front run address succeed!", b.From())
 							frontrun_exec_result = true
+						} else {
+							fmt.Println("Front run address failed!", b.From())
+							frontrun_exec_result = false
 						}
 					}
 					env.state.Rm_adversary_account_entry(b.From(), *b)
 					// Now add init func call in the middle
 					fmt.Println("Now retry to execute with init func call ...")
 					if !frontrun_exec_result {
+						// Now add init func call in the middle
+						fmt.Println("Now retry to execute with init func call ...")
 						if c != nil {
 							frontrun_exec_result = true
 							env.state.RevertToSnapshot(snap)
@@ -1005,6 +1017,8 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 								needed_balance := big.NewInt(0).Add(b.Value(), big.NewInt(0).Mul(b.GasPrice(), big.NewInt(int64(b.Gas()))))
 								if balance.Cmp(needed_balance) < 1 {
 									env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+								}else{
+
 								}
 								//flash loan mining testing end
 								env.state.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(env.state.GetNonce(b.From())))))
@@ -1016,10 +1030,15 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 									if env.state.Token_transfer_flash_loan_check(b.From(), false) {
 										fmt.Println("Front run address succeed!", b.From())
 										frontrun_exec_result = true
+									} else {
+										fmt.Println("Front run address failed!", b.From())
+										frontrun_exec_result = false
 									}
 								}
 								env.state.Rm_adversary_account_entry(b.From(), *b)
-							}
+							}else{
+
+							}							
 						} else {
 							fmt.Println("No init call found. Fail to retry")
 						}
@@ -1034,13 +1053,14 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	}else{
 
 	}
+	
 	if !frontrun_exec_result {
 		if is_state_checkpoint_revert {
 			env.state.RevertToSnapshot(snap)
 			env.gasPool.SetGas(snap_gas)
 			env.header.GasUsed = snap_gasused
 			core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
-			env.state.ClearSnapshotRevisions()
+			env.current.state.Finalise(true)
 		}
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
@@ -1050,7 +1070,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		env.gasPool.SetGas(snap_gas)
 		env.header.GasUsed = snap_gasused		
 		core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
-		env.state.ClearSnapshotRevisions()
+		env.state.Finalise(true)
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
 	}
