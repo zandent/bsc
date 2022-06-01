@@ -334,6 +334,12 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 						}
 					}
 				}
+				for _, k := range FLASH_LOAN_CONTRACT_ADDRESSES {
+					if k == addr {
+						only_receive_from_sender_and_contract = false
+						break
+					}
+				}
 				if only_receive_from_sender_and_contract {
 					found_it := false
 					for _, t := range aa.target_beneficiary_addresses {
@@ -350,6 +356,11 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 		if len(aa.target_beneficiary_addresses) == 0 {
 			fmt.Println("sender and contract address are both not beneficiary. Front run tx will not be assembled!")
 			return false
+		}
+		//DEBUGGING
+		fmt.Println("Sender or contract moves benefits to address:")
+		for _, tgtaddr := range aa.target_beneficiary_addresses {
+			fmt.Println("	", tgtaddr)
 		}
 	}
 	if assemable_new {
@@ -404,6 +415,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 			aa.new_tx = &msg
 			//prepare potential init func call tx
 			if init_call_gas_price, init_call_gas, init_call_value, init_call_data, ok := Get_contract_init_func_call_with_init_call(*(aa.old_tx_contract_address)); ok == nil {
+				fmt.Println("Found information for contract init call address.")
 				replaced_init_call_data := replace_hardcoded_address_in_data(*(aa.old_tx_contract_address), FRONTRUN_ADDRESS, init_call_data)
 				replaced_init_call_data = replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, replaced_init_call_data)
 				if len(aa.target_beneficiary_addresses) != 0 {
@@ -550,8 +562,7 @@ func Check_and_set_contract_init_func_call_data_with_init_call(contract common.A
 			for i, j := len(is_init_call_stored_bytes)-1, 31; i >= 0 && j >= 0; i, j = i-1, j-1 {
 				is_init_call_stored_bytes_32[j] = is_init_call_stored_bytes[i]
 			}
-			copy(is_init_call_stored_bytes_32[:], is_init_call_stored_bytes[:])
-			fmt.Println("old", is_init_call_stored_bytes, "new", is_init_call_stored_bytes_32)
+			// fmt.Println("old", is_init_call_stored_bytes, "new", is_init_call_stored_bytes_32, "len", new(big.Int).SetBytes(is_init_call_stored_bytes_32[:]).Int64())
 			raw_data := val
 			for i := 0; i < 32; i++ {
 				raw_data[117+i] = is_init_call_stored_bytes_32[i]
