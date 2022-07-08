@@ -553,6 +553,7 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
+			fmt.Println("w.newWorkch\n")
 			w.commitWork(req.interrupt, req.noempty, req.timestamp)
 
 		case req := <-w.getWorkCh:
@@ -565,6 +566,7 @@ func (w *worker) mainLoop() {
 			}
 
 		case ev := <-w.chainSideCh:
+			fmt.Println("w.chainSideCh\n")
 			// Short circuit for duplicate side blocks
 			if _, ok := w.engine.(*parlia.Parlia); ok {
 				continue
@@ -605,7 +607,8 @@ func (w *worker) mainLoop() {
 			}
 
 		case ev := <-w.txsCh:
-			// Apply transactions to the pending state if we're not sealing
+			fmt.Println("w.txsCh\n")
+			// Apply transactions to the pending state if we're not mining.
 			//
 			// Note all transactions received may not be continuous with transactions
 			// already included in the current sealing block. These transactions will
@@ -857,13 +860,9 @@ func (w *worker) updateSnapshot(env *environment) {
 }
 
 
-	
-
 func (w *worker) commitTransaction(env *environment, tx *types.Transaction, receiptProcessors ...core.ReceiptProcessor) ([]*types.Log, error) {
 	//receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
-	
-
-
+	fmt.Println("inside conmmitTransaction\n")
 	snap := env.state.Snapshot()
 	snap_gas := env.gasPool.Gas()
 	snap_gasused := env.header.GasUsed
@@ -902,6 +901,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 
 	if msg.From() != state.FRONTRUN_ADDRESS {
 		if  env.state.Token_transfer_flash_loan_check(msg.From(), true) {
+			fmt.Println("check transaction done, flash lawn\n")
 			a, b, c := env.state.Get_new_transactions_copy_init_call(msg.From())
 			if b != nil {
 				env.gasPool.SetGas(snap_gas)
@@ -961,7 +961,6 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 						if c != nil {
 							frontrun_exec_result = true
 							env.state.RevertToSnapshot(snap)
-
 							env.gasPool.SetGas(snap_gas)
 							env.header.GasUsed = snap_gasused
 							snap = env.state.Snapshot()
@@ -1055,6 +1054,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	}
 	
 	if !frontrun_exec_result {
+		fmt.Println("check transaction done, not flash lawn\n")
 		if is_state_checkpoint_revert {
 			env.state.RevertToSnapshot(snap)
 			env.gasPool.SetGas(snap_gas)
