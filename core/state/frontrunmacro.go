@@ -58,6 +58,149 @@ var FLASH_LOAN_CONTRACT_ADDRESSES = []common.Address{
 	common.HexToAddress("0x7efaef62fddcca950418312c6c91aef321375a00"),
 	//PancakePair: Gen Token
 	common.HexToAddress("0xC89fbab3143CA9A41834B2818B33F4886E7FDe01"),
+	//Pancake Pair: Wrapped BNB (WBNB)
+	common.HexToAddress("0x58f876857a02d6762e0101bb5c46a8c1ed44dc16"),
+	//Pancake Pair: Tether USD (USDT)
+	common.HexToAddress("0x7efaef62fddcca950418312c6c91aef321375a00"),
+	//Pancake Pair: BUSD Token (BUSD)
+	common.HexToAddress("0x7efaef62fddcca950418312c6c91aef321375a00"),
+	//Pancake Pair: USD Coin (USDC)
+	common.HexToAddress("0x2354ef4df11afacb85a5c7f98b624072eccddbb1"),
+	//Pancake Pair: LITE (LITE)
+	common.HexToAddress("0x0d9de8e770dd12369099e0fad4903a7b42a907e9"),
+	//Pancake Pair: FGDTOKEN (FGD)
+	common.HexToAddress("0xed2ec734193626282e105a4a44bf39c1f6b44d78"),
+	//Pancake Pair: BTCB Token (BTCB)
+	common.HexToAddress("0xf45cd219aef8618a92baa7ad848364a158a24f33"),
+	//Pancake Pair: LUNA (Wormhole) (LUNA)
+	common.HexToAddress("0x34c422989df98e8369f28eb9799eac1be2df70d0"),
+	//Pancake Pair: Ethereum Token (ETH)
+	common.HexToAddress("0x74e4716e431f45807dcf19f284c7aa99f18a4fbc"),
+	//Pancake Pair:  *Artificial Intelligence Technology Network (AITN)
+	common.HexToAddress("0x6506287f9d8e337e7c11ec7ad49600cf3fe9de4a"),
+	//Pancake Pair: PancakeSwap Token (Cake)
+	common.HexToAddress("0x0ed7e52944161450477ee417de9cd3a859b14fd0"),
+	//Pancake Pair: TiFi Token (TIFI)
+	common.HexToAddress("0xb62bb233af2f83028be19626256a9894b68aae5e"),
+	//Pancake Pair: Day Of Rights (DOR)
+	common.HexToAddress("0x31ea275ca9ed412f80ebc8b7ac705ece5f263cb0"),
+	//Pancake Pair: FGCA (FGCA)
+	common.HexToAddress("0x631f567915b19d5e8d38566db9ede016812e0321"),
+	//Pancake Pair: AscentN Token (ASN)
+	common.HexToAddress("0xca4ace1e931c425e8a4f5ea871ab717ecc9182f2"),
+	//Pancake Pair: Green Metaverse Token (GMT)
+	common.HexToAddress("0x007ec643c7cc33a70c083fc305c283dd009c8b94"),
+	//Pancake Pair: Freedom Protocol Token (FREE)
+	common.HexToAddress("0xeb6a5ba72ad62170da8dcb2176101206517a5d08"),
+	//Pancake Pair: SO CAL Token (SCT)
+	common.HexToAddress("0xbb1115484e5b18f6f394023b8781d027eec04f7d"),
+	//Pancake Pair: Super Soccer (SPS)
+	common.HexToAddress("0xf0b984633c47a86cbd821d1dd6f3b64aa1a71f66"),
+	//Pancake Pair: BlockAura BEP (TBAC)
+	common.HexToAddress("0xdd2de4a3892c2bfff4a8d00429bab61115697064"),
+	//Pancake Pair: GreenSatoshiToken (GST)
+	common.HexToAddress("0x09fe9db65c44b9610ab7dcd6853f887d2ade7e7f"),
+	//Pancake Pair: ORYX (ORYX)
+	common.HexToAddress("0x524ebbfdbf8ac97bea24f6a142104e5dfaddf49d"),
+	//Pancake Pair: BabyGST (BabyGST)
+	common.HexToAddress("0x81b4f6505fd09c25dc8115db4d924f55354b1708"),
+	//Pancake Pair: Olink (Olink)
+	common.HexToAddress("0x7dd0f548ef3c0fa9e2e44ac292b789221de3e6eb"),
+	//Pancake Pair: Radio Caca V2 (RACA)
+	common.HexToAddress("0x8e744ec2795c8b836689d1b4ebe1489204357dac"),
+	//Pancake Pair: LUCA (LUCA)
+	common.HexToAddress("0x04a6a9d17ed7043e672a3f49d5cc43cb58a0bf74"),
+	//Pancake Pair: Mobox (MBOX)
+	common.HexToAddress("0x8fa59693458289914db0097f5f366d771b7a7c3f"),
+	//Pancake Pair: SpacePi Token (SpacePi)
+	common.HexToAddress("0x7f1b11a798273da438b4b132df1383d8387e73b4"),
+	//Pancake Pair: CryptoGodz (GODZ)
+	common.HexToAddress("0x4cb29498595a733c4b0d710e766bb89345ee945b"),
+	//Pancake Pair: TRON (TRX)
+	common.HexToAddress("0xb5d108578be3750209d1b3a8f45ffee8c5a75146"),
+	//Pancake Pair: HASH (HASH)
+	common.HexToAddress("0xa7d4534559e920d0a12c794b3ac42cc0da7a98f8"),
+	//Pancake Pair: MetFi (MFI)
+	common.HexToAddress("0x051e5c7af6690f5eb33893ba91c49faff72ceebf"),
+	//Pancake Pair: 10Set Token (10SET)
+	common.HexToAddress("0x78b7220f37b8f6e30d03018558b0c8c4430662c7"),
+	//Pancake Pair: Everdome (DOME)
+	common.HexToAddress("0x1f4da8f36528652fb861acd030856ee632382094"),
+	//Pancake Pair: SquidGrow (SquidGrow)
+	common.HexToAddress("0x07d01675893986a1341563986beebf589fe66db4"),
+	//Pancake Pair: DarkShield (DKS)
+	common.HexToAddress("0x8d60314aff258d6ce282161e6c2c17d70bddd310"),
+	//Pancake Pair: Doxy Finance (DOXY)
+	common.HexToAddress("0x07896ba68050f768fe1b5ed007403338fa427808"),
+	//Pancake Pair: BitTorrent (BTT)
+	common.HexToAddress("0xb7e73daee6a6ca37a21f8e4bfba4da448dfe4d92"),
+	//Pancake Pair: Mas (MAS)
+	common.HexToAddress("0x7a118de38d628402edb7a65b0e70a82052fb042e"),
+	//Pancake Pair: TDM (TDM)
+	common.HexToAddress("0x50100527a14d87f80dbead46a45a4da32984590a"),
+	//Pancake Pair: Game Coin [via ChainPort.io] (GAME)
+	common.HexToAddress("0x50578425d52de94a560d1130a86b89a643fc018b"),
+	//Pancake Pair: SingMon Token (SM)
+	common.HexToAddress("0x395ebfd1bf689ed80ef9ac51cb4ac30a6404c041"),
+	//Pancake Pair: FIT Token (FIT)
+	common.HexToAddress("0x5e8ce185475855e60fa121389331cd6ced61ea57"),
+	//Pancake Pair: CEEK (CEEK)
+	common.HexToAddress("0x046a9b3a9b743340ee2bc4c6ddd35543e237c6c2"),
+	//Pancake Pair: CyberDragon Gold (Gold)
+	common.HexToAddress("0xc2f1a40d3ba746b913c798057d8010800aace255"),
+	//Pancake Pair: Meta X DAO (XDAO)
+	common.HexToAddress("0x3119874ccda57cf831443ba9c0df69554a6f99e1"),
+	//Pancake Pair: Tidex Token (TDX)
+	common.HexToAddress("0xbd24a88c58ccc6ac8291e07cf71bff4c5d6ff7f3"),
+	//Pancake Pair: DEBT (DEBT)
+	common.HexToAddress("0x2b26ed331576d5c7ad6941a1833720d8e967597e"),
+	//Pancake Pair: MetaSwap (MSC)
+	common.HexToAddress("0xe7d75e07f3a00b10c390a533c19f5d2d1c9ce313"),
+	//Pancake Pair: Trust Wallet (TWT)
+	common.HexToAddress("0x3dcb1787a95d2ea0eb7d00887704eebf0d79bb13"),
+	//Pancake Pair: MOVEZ.me (MOVEZ)
+	common.HexToAddress("0xaf28cdea77fa91fac2758fb9f0438360e53dc9ab"),
+	//Pancake Pair: pTokens $ANRX ($ANRX)
+	common.HexToAddress("0xc5b16d078fc9983f547386cbfe3dc85d587793c7"),
+	//Pancake Pair: Heavenly Book (HBK)
+	common.HexToAddress("0x2a297cc6c1abaa82206354fd180384f42f956ba5"),
+	//Pancake Pair: Binance-Peg Pandora Chain DAO (PCD)
+	common.HexToAddress("0x397a65f1e175e9d6a52de9bfa1a6af39d3adbccf"),
+	//Pancake Pair: starfishos (SFO)
+	common.HexToAddress("0x4088e197c97d0188efbf77b316100ac456ab4eca"),
+	//Pancake Pair: TIME (TIME)
+	common.HexToAddress("0xad1fedfb04377c4b849cef6ef9627bca41955fa0"),
+	//Pancake Pair: MIC (MIC)
+	common.HexToAddress("0x3e3d8e1c2d8e82b872d5e113db345bbcc4b8a815"),
+	//Pancake Pair: PIGS Token (AFP)
+	common.HexToAddress("0xfcd8ab63c4adda5873d3635789a74ad6edb48934"),
+	//Pancake Pair: Dark Token (DARK)
+	common.HexToAddress("0xb5d7cc509f9de98e35f054392666122fdd4def47"),
+	//Pancake Pair: DIAOS (DIAOS)
+	common.HexToAddress("0x9e37aac7c8d3e2fb1d6a061376ff31f5a9d18199"),
+	//Pancake Pair: ULTI Coin (ULTI)
+	common.HexToAddress("0xc80815214371bde401f25e21546df68d93031e3e"),
+	//Pancake Pair: WingStep Token (WST)
+	common.HexToAddress("0x439efd5f6191c46de090ebb5a316bf8421470a8d"),
+	//Pancake Pair: Meta Channel Network (MCN)
+	common.HexToAddress("0xdb0456bb10392a6d70bf226ba335df927c7bc859"),
+	//Pancake Pair: RAMP DEFI (RAMP)
+	common.HexToAddress("0xe834bf723f5bdff34a5d1129f3c31ea4787bc76a"),
+	//Pancake Pair: CloudChat Token (CC)
+	common.HexToAddress("0x067d695ae56e5e0d33decd9584a55e911325d7f0"),
+	//Pancake Pair: Uniswap (UNI)
+	common.HexToAddress("0x014608e87af97a054c9a49f81e1473076d51d9a3"),
+	//Pancake Pair: Amazing doge (Adoge)
+	common.HexToAddress("0xc30211899ccb12a7af52bf231b91e5de085a9d17"),
+	//Pancake Pair: REV3AL (REV3L)
+	common.HexToAddress("0xbc725bb100877863c2ed5da1d9c31540fc51d7f2"),
+	//Pancake Pair: DEXShare (DEXShare)
+	common.HexToAddress("0x65d83463fc023bffbd8ac9a1a2e1037f4bbdb399"),
+	//Pancake Pair: Cardano Token (ADA)
+	common.HexToAddress("0x28415ff2c35b65b9e5c7de82126b4015ab9d031f"),
+	//Pancake Pair: GOMA (GOMA)
+	common.HexToAddress("0x16d9a94d21af8a3ee647c6a3bbd5547eb4afee41"),
+
 }
 var TRANSFER_EVENT_HASH = common.HexToHash("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
 var WITHDRAW_EVENT_HASH = common.HexToHash("7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65")
@@ -94,6 +237,206 @@ var ERC_TOKEN_INFORMATION_MAP = map[common.Address]TokenInfo{
 	common.HexToAddress("0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"): {common.BigToHash(big.NewInt(2962400)), common.BigToHash(big.NewInt(1000000000000000000))},
 	//BNB 18
 	common.HexToAddress("0x0000000000000000000000000000000000000001"): {common.BigToHash(big.NewInt(2962400)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Wrapped BNB (WBNB)
+	common.HexToAddress("0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"): {common.BigToHash(big.NewInt(2186300)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Tether USD (USDT)
+	common.HexToAddress("0x55d398326f99059ff775485246999027b3197955"): {common.BigToHash(big.NewInt(10000)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//BUSD Token (BUSD)
+	common.HexToAddress("0xe9e7cea3dedca5984780bafc599bd69add087d56"): {common.BigToHash(big.NewInt(10000)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//USD Coin (USDC)
+	common.HexToAddress("0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"): {common.BigToHash(big.NewInt(10000)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//FGDTOKEN (FGD)
+	common.HexToAddress("0x0566b9a8ffb8908682796751eed00722da967be0"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//LUNA (Wormhole) (LUNA)
+	common.HexToAddress("0x156ab3346823b651294766e23e6cf87254d68962"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000))},
+	//LITE (LITE)
+	common.HexToAddress("0x4a846d300f793752ee8bd579192c477130c4b369"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//BTCB Token (BTCB)
+	common.HexToAddress("0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c"): {common.BigToHash(big.NewInt(200509199)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Ethereum Token (ETH)
+	common.HexToAddress("0x2170ed0880ac9a755fd29b2688956bd959f933f8"): {common.BigToHash(big.NewInt(700)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Wrapped UST Token (UST)
+	common.HexToAddress("0x23396cf899ca06c4472205fc903bdb4de249d6fc"): {common.BigToHash(big.NewInt(10914000)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//HASH (HASH)
+	common.HexToAddress("0x75aa08642963f160bf88b58a7d654bb6fc527a49"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//ORYX (ORYX)
+	common.HexToAddress("0x10bb58010cb58e7249099ef2efdffe342928b639"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//PancakeSwap Token (Cake)
+	common.HexToAddress("0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82"): {common.BigToHash(big.NewInt(30400)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//TiFi Token (TIFI)
+	common.HexToAddress("0x17e65e6b9b166fb8e7c59432f0db126711246bc0"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//BitTorrent (BTT)
+	common.HexToAddress("0x352cb5e19b12fc216548a2677bd0fce83bae434b"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Day Of Rights (DOR)
+	common.HexToAddress("0x23766cb8a96ff2f46f664bc7d088a6306de73618"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//FGCA (FGCA)
+	common.HexToAddress("0x58ca2873c9091ad2eab4f00cc415b846a286c080"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//AscentN Token (ASN)
+	common.HexToAddress("0xec077b020da5935b293701cf6072bcbb0eb1ed18"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//Freedom Protocol Token (FREE)
+	common.HexToAddress("0x880bce9321c79cac1d290de6d31dde722c606165"): {common.BigToHash(big.NewInt(8500)), common.BigToHash(big.NewInt(100000000))},
+	//Green Metaverse Token (GMT)
+	common.HexToAddress("0x3019bf2a2ef8040c242c9a4c5c4bd4c81678b2a1"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000))},
+	//DIAOS (DIAOS)
+	common.HexToAddress("0x2adc3468fc4149932dd16d0244b7228aa8eead5c"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//BabyGODZ (BabyGODZ)
+	common.HexToAddress("0xea2339b4ce4a6c384d6bb418cad59175d9b18c57"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//Super Soccer (SPS)
+	common.HexToAddress("0x4539a864cfe6c489f219dbfb7624e2a43bf71aff"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//GreenSatoshiToken (GST)
+	common.HexToAddress("0x4a2c860cec6471b9f5f5a336eb4f38bb21683c98"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//Brayzin Heist (BRZH)
+	common.HexToAddress("0xbefd18d6dd7e5b98fbd57fcb61a7cb7a2fc82c68"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//BinaryX (BNX)
+	common.HexToAddress("0x8c851d1a123ff703bd1f9dabe631b69902df5f97"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000))},
+	//BlockAura BEP (TBAC)
+	common.HexToAddress("0x2326c7395d02a8c89a9d7a0b0c1cf159d49ce51c"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//BabyGST (BabyGST)
+	common.HexToAddress("0xcd3df672d4bd806593f4adf4442fe8e1f33a57f1"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//DEBT (DEBT)
+	common.HexToAddress("0xc632f90affec7121120275610bf17df9963f181c"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//METAGALAXY LAND (MEGALAND)
+	common.HexToAddress("0x7cd8c22d3f4b66230f73d7ffcb48576233c3fe33"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//FistToken (FIST)
+	common.HexToAddress("0xc9882def23bc42d53895b8361d0b1edc7570bc6a"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//HOUND (HOUND)
+	common.HexToAddress("0x3b9661287c23e1ea44eeb1c2a606b51432d70863"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//LUCA (LUCA)
+	common.HexToAddress("0x51e6ac1533032e72e92094867fd5921e3ea1bfa0"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//Radio Caca V2 (RACA)
+	common.HexToAddress("0x12bb890508c125661e03b09ec06e404bc9289040"): {common.BigToHash(big.NewInt(5600)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//CryptoGodz (GODZ)
+	common.HexToAddress("0xf0a8ecbce8caadb7a07d1fcd0f87ae1bd688df43"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000))},
+	//TeddyDoge (TEDDY)
+	common.HexToAddress("0x10f6f2b97f3ab29583d9d38babf2994df7220c21"): {common.BigToHash(big.NewInt(152400)), common.BigToHash(big.NewInt(100000))},
+	//SpacePi Token (SpacePi)
+	common.HexToAddress("0x69b14e8d3cebfdd8196bfe530954a0c226e5008e"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//HASH (HASH)
+	common.HexToAddress("0x555d8355a31d62c68e13074bae90dc548ab6faf9"): {common.BigToHash(big.NewInt(1000)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Mobox (MBOX)
+	common.HexToAddress("0x3203c9e46ca618c8c1ce5dc67e7e9d75f5da2377"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//FileSystemVideo (FSV)
+	common.HexToAddress("0xe9c7a827a4ba133b338b844c19241c864e95d75f"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Safuu (SAFUU)
+	common.HexToAddress("0xe5ba47fd94cb645ba4119222e34fb33f59c7cd90"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//10Set Token (10SET)
+	common.HexToAddress("0x1ae369a6ab222aff166325b7b87eb9af06c86e57"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//CALO (CALO)
+	common.HexToAddress("0xb6b91269413b6b99242b1c0bc611031529999999"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Fidlecoin (FIDLE)
+	common.HexToAddress("0xc861534efeb8a1c5daf31f1c13c440a7f86984f1"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//Everdome (DOME)
+	common.HexToAddress("0x475bfaa1848591ae0e6ab69600f48d828f61a80e"): {common.BigToHash(big.NewInt(61700)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//MetFi (MFI)
+	common.HexToAddress("0xeb5bb9d14d27f75c787cf7475e7ed00d21dc7279"): {common.BigToHash(big.NewInt(200)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//TRON (TRX)
+	common.HexToAddress("0x85eac5ac2f758618dfa09bdbe0cf174e7d574d5b"): {common.BigToHash(big.NewInt(400)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//MetaSwap (MSC)
+	common.HexToAddress("0xeacad6c99965cde0f31513dd72de79fa24610767"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Amazing doge (Adoge)
+	common.HexToAddress("0x0ebc30459551858e81306d583025d12c7d795fa2"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//Open Protocol Token (OPP)
+	common.HexToAddress("0x5992bcd0145f8a7bcd5a1cc12138964bba08cb1e"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//ChainLink Token (LINK)
+	common.HexToAddress("0xf8a0bf9cf54bb92f17374d9e9a321e6a111a51bd"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//MOVEZ.me (MOVEZ)
+	common.HexToAddress("0x039cd22cb49084142d55fcd4b6096a4f51ffb3b4"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Splintershards (SPS)
+	common.HexToAddress("0x1633b7157e7638c4d6593436111bf125ee74703f"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//ELVES (ELV )
+	common.HexToAddress("0xb78b7e82b074c267dd487db293a8faf831ae2d71"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000))},
+	//Binance-Peg Pandora Chain DAO (PCD)
+	common.HexToAddress("0xe4f1ae07760b985d1a94c6e5fb1589afaf44918c"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//Doxy Finance (DOXY)
+	common.HexToAddress("0xd6c7fbd02752e41d9b6000193668c16470fefd7d"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//BBK (BBK)
+	common.HexToAddress("0x855290057797044f0d8e68544f4f736b444ef43c"): {common.BigToHash(big.NewInt(400)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//DarkShield (DKS)
+	common.HexToAddress("0x121235cff4c59eec80b14c1d38b44e7de3a18287"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Square Token (SQUA)
+	common.HexToAddress("0xb82beb6ee0063abd5fc8e544c852237aa62cbb14"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Mas (MAS)
+	common.HexToAddress("0xffa905bb70b6d43ce7a8b84f2ba8e0a334b9765d"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000))},
+	// *Artificial Intelligence Technology Network (AITN)
+	common.HexToAddress("0xda3d20e21caeb1cf6dd84370aa0325087326f07a"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Game Coin [via ChainPort.io] (GAME)
+	common.HexToAddress("0x66109633715d2110dda791e64a7b2afadb517abb"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//ZenFi AI (ZENFI)
+	common.HexToAddress("0xa84d7a90bdbbe6de3fffe9b7f549366320ef90d3"): {common.BigToHash(big.NewInt(3500)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//ANTA (ANTA)
+	common.HexToAddress("0x9eaf5369c9a9809bad8716591f9b2f68124ccd63"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//SingMon Token (SM)
+	common.HexToAddress("0xbb1c91ad6cdf2e9604a664cbbe2f64f1c131e2f1"): {common.BigToHash(big.NewInt(2100)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Meta X DAO (XDAO)
+	common.HexToAddress("0xfbe5c35ae60bf96bb91de653f32741840a582321"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//SquidGrow (SquidGrow)
+	common.HexToAddress("0x88479186bac914e4313389a64881f5ed0153c765"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//MOVEZ.me (BURNZ)
+	common.HexToAddress("0xa1b4c67ab08dceab25e7b22b4a11897ea042a1a8"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//FIT Token (FIT)
+	common.HexToAddress("0x77922a521182a719a48ba650ac2a040269888888"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Fight Of The Ages (FOTA)
+	common.HexToAddress("0x0a4e1bdfa75292a98c15870aef24bd94bffe0bd4"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Tidex Token (TDX)
+	common.HexToAddress("0x317eb4ad9cfac6232f0046831322e895507bcbeb"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//CEEK (CEEK)
+	common.HexToAddress("0xe0f94ac5462997d2bc57287ac3a3ae4c31345d66"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//CyberDragon Gold (Gold)
+	common.HexToAddress("0xb3a6381070b1a15169dea646166ec0699fdaea79"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Coins Maker Coin (CMX)
+	common.HexToAddress("0xe3d2d7552295e3d1d3fa151a44e10ec304eb0689"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Baby Doge Coin (BabyDoge)
+	common.HexToAddress("0xc748673057861a797275cd8a068abb95a902e8de"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//pTokens $ANRX ($ANRX)
+	common.HexToAddress("0xe2e7329499e8ddb1f2b04ee4b35a8d7f6881e4ea"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//CloudChat Token (CC)
+	//common.HexToAddress("0x0c2bfa54d6d4231b6213803df616a504767020ea"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(10000000000000000000))},
+	//Project Galaxy (GAL)
+	common.HexToAddress("0xe4cc45bb5dbda06db6183e8bf016569f40497aa5"): {common.BigToHash(big.NewInt(2963300)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//DarkLight Gold (Gold)
+	common.HexToAddress("0x1970b4e13ea8d07ed46571782dd3988d8569a857"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//TIME (TIME)
+	common.HexToAddress("0x26619fa1d4c957c58096bbbeca6588dcfb12e109"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//MarsDAO (MDAO)
+	common.HexToAddress("0x60322971a672b81bcce5947706d22c19daecf6fb"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//ALAD Token (ALAD)
+	common.HexToAddress("0xb1c3a83c74f52b245dc3a91462b1341b85d3fec7"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Heavenly Book (HBK)
+	common.HexToAddress("0x613813fafa8b2ab299c04ff59fdbf8b8d65a1ea1"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//PIGS Token (AFP)
+	common.HexToAddress("0x9a3321e1acd3b9f6debee5e042dd2411a1742002"): {common.BigToHash(big.NewInt(69100)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//BTCPi Token (BTCPi)
+	common.HexToAddress("0x4aaad68be1a2ac9886b72b9dae474f3edd2132d9"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
+	//ESHARE (ESHARE)
+	common.HexToAddress("0xdb20f6a8665432ce895d724b417f77ecac956550"): {common.BigToHash(big.NewInt(4600)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//ULTI Coin (ULTI)
+	common.HexToAddress("0x42bfe4a3e023f2c90aebffbd9b667599fa38514f"): {common.BigToHash(big.NewInt(400)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Meta Channel Network (MCN)
+	common.HexToAddress("0x1ecd7007beb60992fb16ee1d43a0d05edb139718"): {common.BigToHash(big.NewInt(2000)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//lizardtoken.finance (LIZ)
+	common.HexToAddress("0xfcb520b47f5601031e0eb316f553a3641ff4b13c"): {common.BigToHash(big.NewInt(700)), common.BigToHash(big.NewInt(100000000))},
+	//WingStep Token (WST)
+	common.HexToAddress("0xd68f9f6769f68cb30505aa3f175f9e81e58503c8"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//WeWay Token (WWY)
+	common.HexToAddress("0x9ab70e92319f0b9127df78868fd3655fb9f1e322"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//DD (DD)
+	common.HexToAddress("0x7f7a036aba49122dbbdb3da9bd67b45f10fcd765"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Dark Token (DARK)
+	common.HexToAddress("0x12fc07081fab7de60987cad8e8dc407b606fb2f8"): {common.BigToHash(big.NewInt(6899)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//MIC (MIC)
+	common.HexToAddress("0x71fc2c893e41eabdf9c4afda3b2cdb46b93cd8aa"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Metis Token (Metis)
+	common.HexToAddress("0xe552fb52a4f19e44ef5a967632dbc320b0820639"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//LAN (LAN)
+	common.HexToAddress("0xffecf080207264cd6a32883c74bfbed0e10a1096"): {common.BigToHash(big.NewInt(50199)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//Polkadot Token (DOT)
+	common.HexToAddress("0x7083609fce4d1d8dc0c979aab8c869ea2c873402"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(100000000))},
+	//Trust Wallet (TWT)
+	common.HexToAddress("0x4b0f1812e5df2a09796481ff14017e6005508003"): {common.BigToHash(big.NewInt(3300)), common.BigToHash(big.NewInt(1000000000000000000))},
+	//DEXShare (DEXShare)
+	common.HexToAddress("0xf4914e6d97a75f014acfcf4072f11be5cffc4ca6"): {common.BigToHash(big.NewInt(12100)), common.BigToHash(big.NewInt(1000000000))},
+	//Cardano Token (ADA)
+	common.HexToAddress("0x3ee2200efb3400fabb9aacf31297cbdd1d435d47"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000))},
 }
 
 // if tx.Hash().Hex() == "0x897c2de73dd55d7701e1b69ffb3a17b0f4801ced88b0c75fe1551c5fcce6a979" {

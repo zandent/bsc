@@ -386,7 +386,8 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		allLogs     []*types.Log
 		gp          = new(GasPool).AddGas(block.GasLimit())
 	)
-
+	// fmt.Println("Processing block number in side state_processor: ", block.Number())
+	signer := types.MakeSigner(p.bc.chainConfig, block.Number())
 	var receipts = make([]*types.Receipt, 0)
 	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
@@ -428,12 +429,30 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 			return statedb, nil, nil, 0, err
 		}
 		statedb.Prepare(tx.Hash(), i)
+		// write contract data into contract_db
+		// fmt.Println("Writing into contract db ", block.Number())
+		call_addr := common.HexToAddress("0x0000000000000000000000000000000000000000")
+		is_create := 0
+		if msg.To() == nil {
+			contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, statedb.GetNonce(state.FRONTRUN_ADDRESS))
+			state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
+			is_create = 1
+		} else {
+			call_addr = *msg.To()
+			state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
+		}
+		// flash_loan_prove_transaction(p.config, p.bc, gp, header, tx.Hash(), tx.Type(), tx.Nonce(), usedGas, *p.bc.GetVMConfig(), statedb, &msg, nil, bloomProcessors)
 		receipt, err := applyTransaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, bloomProcessors)
-		// flash_loan_prove_transaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, bloomProcessors)
 		if err != nil {
 			bloomProcessors.Close()
 			return statedb, nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
+		temp_contract_addresses := statedb.Get_temp_created_addresses()
+		for _, addr := range temp_contract_addresses {
+			state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
+		}
+		statedb.Clear_contract_address()
+
 		commonTxs = append(commonTxs, tx)
 		receipts = append(receipts, receipt)
 	}
