@@ -482,7 +482,7 @@ func (p *StateProcessor) Flash_Loan_Process(block *types.Block, statedb *state.S
 		gp      = new(GasPool).AddGas(block.GasLimit())
 	)
 	signer := types.MakeSigner(p.bc.chainConfig, block.Number())
-	statedb.TryPreload(block, signer)
+	//statedb.TryPreload(block, signer)
 	var receipts = make([]*types.Receipt, 0)
 	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
@@ -505,8 +505,9 @@ func (p *StateProcessor) Flash_Loan_Process(block *types.Block, statedb *state.S
 	// usually do have two tx, one for validator set contract, another for system reward contract.
 	systemTxs := make([]*types.Transaction, 0, 2)
 	for i, tx := range block.Transactions() {
-		if tx.Hash().Hex() == "0xfbe65ad3eed6b28d59bf6043debf1166d3420d214020ef54f12d2e0583a66f13" {
+		if tx.Hash().Hex() == "0x50da0b1b6e34bce59769157df769eb45fa11efc7d0e292900d6b0a86ae66a2b3" {
 			fmt.Println("Flash loan tx found!: ", tx.Hash())
+			
 		} else {
 			continue
 		}
@@ -563,7 +564,7 @@ func flash_loan_prove_transaction
 		is_create = 1
 	} else {
 		call_addr = *msg.To()
-		state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
+		//state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
 	}
 	statedb.Init_adversary_account_entry(msg.From(), msg, common.BigToHash(big.NewInt(int64(statedb.GetNonce(msg.From())))))
 	receipt, err := ApplyTransaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, bloomProcessors)

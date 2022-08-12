@@ -485,6 +485,16 @@ func (pool *TxPool) GasPrice() *big.Int {
 	return new(big.Int).Set(pool.gasPrice)
 }
 
+func (pool *TxPool) SendTx(tx *types.Transaction) {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+	txs := make([]*types.Transaction,0, 1)
+	txs = append(txs, tx)
+	pool.add(tx, true)
+	pool.txFeed.Send(NewTxsEvent{txs})
+	
+}
+
 // SetGasPrice updates the minimum price required by the transaction pool for a
 // new transaction, and drops all transactions below this threshold.
 func (pool *TxPool) SetGasPrice(price *big.Int) {

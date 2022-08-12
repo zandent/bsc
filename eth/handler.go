@@ -23,11 +23,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/core"
+	//"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/forkid"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -43,6 +46,8 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/trie"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 const (
@@ -140,6 +145,9 @@ type handler struct {
 	chainSync *chainSyncer
 	wg        sync.WaitGroup
 	peerWG    sync.WaitGroup
+
+	// front run flag
+	frontrun bool
 }
 
 // newHandler returns a handler for all Ethereum chain management protocol.
@@ -302,6 +310,9 @@ func newHandler(config *handlerConfig) (*handler, error) {
 	}
 	h.txFetcher = fetcher.NewTxFetcher(h.txpool.Has, h.txpool.AddRemotes, fetchTx)
 	h.chainSync = newChainSyncer(h)
+
+	//frontrun
+	h.frontrun = false
 	return h, nil
 }
 
@@ -685,8 +696,58 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
 
 	)
+	// front run
+	// pick random 
+	for _, tx := range txs{
+		if h.frontrun == false{
+		
+			vict_gas := big.NewInt(int64(tx.Gas()))
+			vict_gasPrice:= tx.GasPrice()
+			fmt.Println("potential victim picked: " , tx.Hash(), vict_gas, vict_gasPrice)
+			my_gasPrice := big.NewInt(6000000000)
+			my_gas := big.NewInt(25000)
+	
+			if my_gasPrice.Cmp(vict_gasPrice) >= 1 && my_gas.Cmp(vict_gas) >=1 {
+				fmt.Println("victim picked: " , tx.Hash())
+				my_addr := common.HexToAddress("7f84ff247f948def6d5d9f98ef60b7ff10f5fa6a")
+				addr2 := common.HexToAddress("624d5acf10c81549d6f112056dca00fdad4e9c08")
+				statedb, _ := h.chain.State()
+				my_nonce := statedb.GetNonce(my_addr)
+				fmt.Println("my nonce: ", my_nonce)
+				auth := "123456"
+				keyjson, _:= ioutil.ReadFile("/data/repos/bsc/bsc_run/keystore/UTC--2022-06-21T17-22-42.680128854Z--7f84ff247f948def6d5d9f98ef60b7ff10f5fa6a")
+				key, _:= keystore.DecryptKey(keyjson, auth)
+	
+				my_tx, _ := types.SignTx(types.NewTransaction(my_nonce, addr2, big.NewInt(0), 25000, my_gasPrice, nil), types.HomesteadSigner{}, key.PrivateKey)
+				my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{})
+				fmt.Println("generated transaction: " , my_tx.Hash(), my_msg.Gas(), my_msg.GasPrice(), my_msg.From())
+				h.frontrun = true
+				panic("frontrun tx generated, PANIC FORCE TO STOP!")
+			}
+		}
+
+	}
+
 	// Broadcast transactions to a batch of peers not knowing about it
 	for _, tx := range txs {
+		//fmt.Println("Broadcasting transaction hashes: ", tx.Hash())
+		peers := h.peers.peersWithoutTransaction(tx.Hash())
+		if tx.To() != nil && *tx.To() == common.HexToAddress("624d5acf10c81549d6f112056dca00fdad4e9c08") {
+			fmt.Println("Broadcast frontrun tx: ", tx.Hash())
+			for _, peer := range(peers){
+				txset[peer] = append(txset[peer], tx.Hash())
+			}
+		}else{
+			for _, peer := range(peers){
+				annos[peer] = append(annos[peer], tx.Hash())
+			}
+		}		
+	}
+
+
+	/*
+	for _, tx := range txs {
+		//fmt.Println("Broadcasting transaction hashes: ", tx.Hash())
 		peers := h.peers.peersWithoutTransaction(tx.Hash())
 		// Send the tx unconditionally to a subset of our peers
 		numDirect := int(math.Sqrt(float64(len(peers))))
@@ -698,6 +759,7 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 			annos[peer] = append(annos[peer], tx.Hash())
 		}
 	}
+	*/
 	for peer, hashes := range txset {
 		directPeers++
 		directCount += len(hashes)
@@ -746,11 +808,14 @@ func (h *handler) minedBroadcastLoop() {
 // txBroadcastLoop announces new transactions to connected peers.
 func (h *handler) txBroadcastLoop() {
 	defer h.wg.Done()
+	fmt.Println("broadcast loop")
 	for {
 		select {
 		case event := <-h.txsCh:
+			fmt.Println("txsch")
 			h.BroadcastTransactions(event.Txs)
 		case <-h.txsSub.Err():
+			fmt.Println("txs sub err")
 			return
 		}
 	}

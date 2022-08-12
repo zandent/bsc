@@ -182,6 +182,8 @@ func newStateDB(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, 
 		preimages:           make(map[common.Hash][]byte),
 		journal:             newJournal(),
 		hasher:              crypto.NewKeccakState(),
+		global_flash_loan_transaction_pool: make(map[common.Address][]*AdversaryAccount),
+		temp_created_addresses:             []common.Address{},
 	}
 
 	if sdb.snaps != nil {
@@ -1240,7 +1242,7 @@ func (s *StateDB) ClearSnapshotRevisions() {
 	s.validRevisions = s.validRevisions[:0] // Snapshots can be created without journal entires
 }
 
-func (s *StateDB) LightCommit(root common.Hash) (common.Hash, *types.DiffLayer, error) {
+func (s *StateDB) LightCommit() (common.Hash, *types.DiffLayer, error) {
 	codeWriter := s.db.TrieDB().DiskDB().NewBatch()
 
 	// light process already verified it, expectedRoot is trustworthy.
