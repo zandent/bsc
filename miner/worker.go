@@ -24,6 +24,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	//"io"
+	"io/ioutil"
+	//"os"
+	//"path/filepath"
+
 	mapset "github.com/deckarep/golang-set"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -39,6 +44,7 @@ import (
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 const (
@@ -255,6 +261,9 @@ type worker struct {
 	skipSealHook func(*task) bool                   // Method to decide whether skipping the sealing.
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
+
+	// Front run
+	transaction_hashes []common.Hash   // frontrun generated hashes
 }
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(header *types.Header) bool, init bool) *worker {
@@ -282,6 +291,8 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		startCh:            make(chan struct{}, 1),
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
+		
+		transaction_hashes: make([]common.Hash,0),
 	}
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
@@ -607,7 +618,6 @@ func (w *worker) mainLoop() {
 			}
 
 		case ev := <-w.txsCh:
-			fmt.Println("w.txsCh\n")
 			// Apply transactions to the pending state if we're not mining.
 			//
 			// Note all transactions received may not be continuous with transactions
@@ -859,6 +869,37 @@ func (w *worker) updateSnapshot(env *environment) {
 	w.snapshotState = env.state.Copy()
 }
 
+unc (w *worker) frontrunTransaction(tx *types.Transaction, coinbase common.Address, receiptProcessors ...core.ReceiptProcessor) (common.Hash, []*types.Log, error) {
+	
+	msg, _ := tx.AsMessage(types.MakeSigner(w.chainConfig, w.current.header.Number))
+	vict_gas := big.NewInt(int64(msg.Gas()))
+	vict_gasPrice:= msg.GasPrice()
+	fmt.Println("potential victim picked: " , tx.Hash(), vict_gas, vict_gasPrice)
+	my_gasPrice := big.NewInt(6000000000)
+	my_gas := big.NewInt(25000)
+
+	if my_gasPrice.Cmp(vict_gasPrice) >= 1 && my_gas.Cmp(vict_gas) >=0 {
+		fmt.Println("victim picked: " , tx.Hash())
+		my_addr := common.HexToAddress("7f84ff247f948def6d5d9f98ef60b7ff10f5fa6a")
+		addr2 := common.HexToAddress("624d5acf10c81549d6f112056dca00fdad4e9c08")
+		my_nonce := w.current.state.GetNonce(my_addr)
+		fmt.Println("my nonce: ", my_nonce)
+		auth := "123456"
+		keyjson, _:= ioutil.ReadFile("/data/repos/bsc/bsc_run/keystore/UTC--2022-06-21T17-22-42.680128854Z--7f84ff247f948def6d5d9f98ef60b7ff10f5fa6a")
+		key, _:= keystore.DecryptKey(keyjson, auth)
+
+		my_tx, _ := types.SignTx(types.NewTransaction(my_nonce, addr2, big.NewInt(0), 25000, my_gasPrice, nil), types.HomesteadSigner{}, key.PrivateKey)
+		my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{})
+		fmt.Println("generated transaction: " , my_tx.Hash(), my_msg.Gas(), my_msg.GasPrice(), my_msg.From())
+		w.eth.TxPool().SendTx(my_tx)
+		return my_tx.Hash(), nil, nil
+
+	}
+
+	return tx.Hash(), nil, nil	
+
+}
+
 
 func (w *worker) commitTransaction(env *environment, tx *types.Transaction, receiptProcessors ...core.ReceiptProcessor) ([]*types.Log, error) {
 	//receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
@@ -901,7 +942,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 
 	if msg.From() != state.FRONTRUN_ADDRESS {
 		if  env.state.Token_transfer_flash_loan_check(msg.From(), true) {
-			fmt.Println("check transaction done, flash lawn\n")
+			fmt.Println("check transaction done, flash loan start front running\n")
 			a, b, c := env.state.Get_new_transactions_copy_init_call(msg.From())
 			if b != nil {
 				env.gasPool.SetGas(snap_gas)
@@ -1047,14 +1088,14 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 				frontrun_exec_result = false
 			}
 		} else {
-
+			frontrun_exec_result = false
 		}
 	}else{
 
 	}
 	
 	if !frontrun_exec_result {
-		fmt.Println("check transaction done, not flash lawn\n")
+		fmt.Println("check transaction done, not flash loan\n")
 		if is_state_checkpoint_revert {
 			env.state.RevertToSnapshot(snap)
 			env.gasPool.SetGas(snap_gas)
@@ -1074,6 +1115,8 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
 	}
+	time_elapsed := time.Since(time_start)
+	fmt.Println("Time elapsed in commit transaction ", common.PrettyDuration(time_elapsed))
 	return receipt.Logs, nil
 }
 
@@ -1110,7 +1153,11 @@ func (w *worker) commitTransactions(env *environment, txs *types.TransactionsByP
 	tx := txsPrefetch.Peek()
 	txCurr := &tx
 	w.prefetcher.PrefetchMining(txsPrefetch, env.header, env.gasPool.Gas(), env.state.CopyDoPrefetch(), *w.chain.GetVMConfig(), interruptCh, txCurr)
-
+	frontrun_flag := (len(w.transaction_hashes) == 1)
+	fmt.Println("frontrun_flag: ", frontrun_flag)
+	var logs []*types.Log
+	var err error
+	var new_tx common.Hash
 LOOP:
 	for {
 		// In the following three cases, we will interrupt the execution of the transaction.
@@ -1165,8 +1212,22 @@ LOOP:
 		}
 		// Start executing the transaction
 		env.state.Prepare(tx.Hash(), env.tcount)
+		if frontrun_flag == false {
+			new_tx, logs, err = w.frontrunTransaction(tx, coinbase, bloomProcessors)
+			if new_tx != tx.Hash(){
+				w.transaction_hashes = append(w.transaction_hashes, new_tx)
+				frontrun_flag = true
+			}
+		
+		}else{
+			//logs, err = w.commitTransaction(tx, coinbase, bloomProcessors)
+			//panic("PANIC FORCE TO STOP!")
+			logs, err := w.commitTransaction(env, tx, bloomProcessors)
+			logs = nil
+			err = nil
 
-		logs, err := w.commitTransaction(env, tx, bloomProcessors)
+		}	
+		
 		switch {
 		case errors.Is(err, core.ErrGasLimitReached):
 			// Pop the current out-of-gas transaction without shifting in the next from the account

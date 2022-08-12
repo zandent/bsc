@@ -18,6 +18,7 @@ package eth
 
 import (
 	"math/big"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/gopool"
@@ -94,11 +95,15 @@ func (p *Peer) broadcastTransactions() {
 				done = make(chan struct{})
 				go func() {
 					if err := p.SendTransactions(txs); err != nil {
+						fmt.Println("failed", err)
 						fail <- err
 						return
 					}
 					close(done)
 					p.Log().Trace("Sent transactions", "count", len(txs))
+					for i := 0; i < len(txs); i++ { 
+						fmt.Println("broadcasting transaction done", txs[i])
+					}
 				}()
 			}
 		}
@@ -110,7 +115,11 @@ func (p *Peer) broadcastTransactions() {
 				continue
 			}
 			// New batch of transactions to be broadcast, queue them (with cap)
+			for i := 0; i < len(hashes); i++ { 
+				fmt.Println("peers adding transaction into queue", hashes[i])
+			}
 			queue = append(queue, hashes...)
+			fmt.Println("max queued tx ", maxQueuedTxs, "current length ", len(queue))
 			if len(queue) > maxQueuedTxs {
 				// Fancy copy and resize to ensure buffer doesn't grow indefinitely
 				queue = queue[:copy(queue, queue[len(queue)-maxQueuedTxs:])]

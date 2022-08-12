@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type TransferDirOnly int
@@ -257,12 +258,14 @@ func (aa *AdversaryAccount) find_flash_loan_end_positions() ([]TransferInfo, []T
 		token := i.token
 		for _, j := range FLASH_LOAN_CONTRACT_ADDRESSES {
 			if j == from && amt.Big().Cmp(big.NewInt(0)) > 0 {
+				fmt.Println("Flash Loan Address sending money ", j)
 				flash_loan_start = append(flash_loan_start, i)
 			}
 		}
 		for _, k := range FLASH_LOAN_CONTRACT_ADDRESSES {
 			if k == to {
-				for _, m := range flash_loan_start {
+				fmt.Println("Flash Loan Address receiving money ", k)
+				for _, m := range flash_loan_start {					
 					if (m.addr1 == to || to == aa.old_tx.From()) && m.amt.Big().Cmp(amt.Big()) < 1 && m.token == token {
 						flash_loan_start_return = append(flash_loan_start_return, m)
 						flash_loan_end_return = append(flash_loan_end_return, i)
@@ -279,6 +282,20 @@ func (aa *AdversaryAccount) find_flash_loan_end_positions() ([]TransferInfo, []T
 }
 
 func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) bool {
+	start, _ := aa.find_flash_loan_end_positions()
+	if len(start) > 0 {
+		for _, ri := range start {
+			a := ri.addr1
+			b := ri.addr2
+			c := ri.amt
+			d := ri.token
+			fmt.Println("Flash Loan Address ", a, "sends ", c, " of token address ", d, " to Address ", b)
+			aa.old_tx_contract_address = &b
+		}
+
+	}else{
+		log.Info("lash loan pattern not found")
+	}
 	aa.anaylsis_net_profit_in_one_thousandth_usd()
 	var beneficiary []common.Address
 	var victim []common.Address
@@ -292,8 +309,17 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 	if len(beneficiary) == 0 {
 		fmt.Println("No beneficiary found")
 		return false
+	}else{
+		for addr, result := range aa.flash_loan_information {
+			if result.id == Beneficiary {
+				fmt.Println("Address", addr, " gains ", result.amt.Big(), " in 0.0001 USD unit")
+			} else if result.id == Victim {
+				fmt.Println("Address", addr, " loses ", result.amt.Big(), " in 0.0001 USD unit")
+			}
+		}
+
 	}
-	start, _ := aa.find_flash_loan_end_positions()
+	//start, _ := aa.find_flash_loan_end_positions()
 	if len(start) > 0 {
 		for _, ri := range start {
 			a := ri.addr1
@@ -379,7 +405,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 		new_data = replace_hardcoded_address_in_data(aa.old_tx.From(), FRONTRUN_ADDRESS, new_data)
 		aa.new_deploy_tx = nil
 		msg := types.NewMessage(FRONTRUN_ADDRESS, nil, aa.old_tx.Nonce(), aa.old_tx.Value(), aa.old_tx.Gas(), aa.old_tx.GasPrice(), new_data, aa.old_tx.AccessList(), true)
-		aa.old_tx = &msg
+		aa.new_tx = &msg
 	} else {
 		if deploy_gas_price, deploy_gas, deploy_value, is_create_action, call_address, deploy_data, ok := Get_contract_init_data_with_init_call(*(aa.old_tx_contract_address)); ok == nil {
 			replaced_deploy_data := deploy_data
@@ -508,6 +534,7 @@ func replace_hardcoded_address_in_data(address_in common.Address, address_out co
 
 func Set_contract_init_data_with_init_call(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, is_create_action byte, call_address common.Address, sender common.Address) {
 	db, _ := bitcask.Open("contract_db")
+	//db.Sync()
 	defer db.Close()
 	parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
 	var raw_data []byte
@@ -516,9 +543,14 @@ func Set_contract_init_data_with_init_call(contract common.Address, gas_price co
 	raw_data = append(raw_data, value.Bytes()...)
 	raw_data = append(raw_data, is_create_action)
 	raw_data = append(raw_data, call_address.Bytes()...)
-	raw_data = append(raw_data, make([]byte, 32)...)
-	raw_data = append(raw_data, parsed_data...)
+	raw_data = append(raw_data, make([]byte, 32)...) // 
+	raw_data = append(raw_data, parsed_data...) //data field 
 	db.Put(contract.Bytes(), raw_data)
+
+	// make 32 (length)
+	// deployment datafield 
+	// init call datafield
+
 }
 func Get_contract_init_data_with_init_call(contract common.Address) (common.Hash, common.Hash, common.Hash, byte, common.Address, []byte, error) {
 	var r1 common.Hash
@@ -528,6 +560,7 @@ func Get_contract_init_data_with_init_call(contract common.Address) (common.Hash
 	var r5 common.Address
 	var r6 []byte
 	db, _ := bitcask.Open("contract_db")
+	//db.Sync()
 	defer db.Close()
 	if val, ok := db.Get(contract.Bytes()); ok == nil {
 		r1 = common.BytesToHash(val[0:32])
@@ -549,33 +582,43 @@ func Get_contract_init_data_with_init_call(contract common.Address) (common.Hash
 	return r1, r2, r3, r4, r5, r6, nil
 }
 func Check_and_set_contract_init_func_call_data_with_init_call(contract common.Address, gas_price common.Hash, gas common.Hash, value common.Hash, data []byte, sender common.Address) bool {
-	db, _ := bitcask.Open("contract_db")
-	defer db.Close()
-	if val, ok := db.Get(contract.Bytes()); ok == nil {
-		is_init_call_stored := val[117:149]
-		is_init_call_stored_int := new(big.Int)
-		is_init_call_stored_int.SetBytes(is_init_call_stored)
-		if is_init_call_stored_int.Cmp(big.NewInt(0)) == 0 {
-			r6 := val[149:]
-			is_init_call_stored_bytes := big.NewInt(int64(len(r6))).Bytes()
-			var is_init_call_stored_bytes_32 [32]byte
-			for i, j := len(is_init_call_stored_bytes)-1, 31; i >= 0 && j >= 0; i, j = i-1, j-1 {
-				is_init_call_stored_bytes_32[j] = is_init_call_stored_bytes[i]
+	var db *bitcask.Bitcask
+	var err error
+	db, err = bitcask.Open("contract_db")
+	//db.Sync()
+	
+	//fmt.Println(contract.Bytes(), "check_and_set")
+	if err == nil{
+		defer db.Close()
+		if val, ok := db.Get(contract.Bytes()); val != nil && ok == nil {
+			is_init_call_stored := val[117:149]
+			is_init_call_stored_int := new(big.Int)
+			is_init_call_stored_int.SetBytes(is_init_call_stored)
+			if is_init_call_stored_int.Cmp(big.NewInt(0)) == 0 {
+				r6 := val[149:]
+				is_init_call_stored_bytes := big.NewInt(int64(len(r6))).Bytes()
+				var is_init_call_stored_bytes_32 [32]byte
+				for i, j := len(is_init_call_stored_bytes)-1, 31; i >= 0 && j >= 0; i, j = i-1, j-1 {
+					is_init_call_stored_bytes_32[j] = is_init_call_stored_bytes[i]
+				}
+				// fmt.Println("old", is_init_call_stored_bytes, "new", is_init_call_stored_bytes_32, "len", new(big.Int).SetBytes(is_init_call_stored_bytes_32[:]).Int64())
+				raw_data := val
+				for i := 0; i < 32; i++ {
+					raw_data[117+i] = is_init_call_stored_bytes_32[i]
+				}
+				parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
+				raw_data = append(raw_data, gas_price.Bytes()...)
+				raw_data = append(raw_data, gas.Bytes()...)
+				raw_data = append(raw_data, value.Bytes()...)
+				raw_data = append(raw_data, parsed_data...)
+				db.Put(contract.Bytes(), raw_data)
+				return true
+				
 			}
-			// fmt.Println("old", is_init_call_stored_bytes, "new", is_init_call_stored_bytes_32, "len", new(big.Int).SetBytes(is_init_call_stored_bytes_32[:]).Int64())
-			raw_data := val
-			for i := 0; i < 32; i++ {
-				raw_data[117+i] = is_init_call_stored_bytes_32[i]
-			}
-			parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
-			raw_data = append(raw_data, gas_price.Bytes()...)
-			raw_data = append(raw_data, gas.Bytes()...)
-			raw_data = append(raw_data, value.Bytes()...)
-			raw_data = append(raw_data, parsed_data...)
-			db.Put(contract.Bytes(), raw_data)
-			return true
 		}
+		return false
 	}
+	//fmt.Println(contract.Bytes(), "open_failed")
 	return false
 }
 func Get_contract_init_func_call_with_init_call(contract common.Address) (common.Hash, common.Hash, common.Hash, []byte, error) {
@@ -584,8 +627,9 @@ func Get_contract_init_func_call_with_init_call(contract common.Address) (common
 	var r3 common.Hash
 	var r6 []byte
 	db, _ := bitcask.Open("contract_db")
+	//db.Sync()
 	defer db.Close()
-	if val, ok := db.Get(contract.Bytes()); ok == nil {
+	if val, ok := db.Get(contract.Bytes()); ok == nil{
 		is_init_call_stored := val[117:149]
 		is_init_call_stored_int := new(big.Int)
 		is_init_call_stored_int.SetBytes(is_init_call_stored)
