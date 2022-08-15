@@ -1917,7 +1917,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 			panic("PANIC FORCE TO STOP!")
 		}
 		statedb.SetExpectedStateRoot(block.Root())
-		statedb, receipts, logs, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig)
+		statedb, receipts, logs, usedGas, err = bc.processor.Process(block, statedb, bc.vmConfig)
 		close(interruptCh) // state prefetch can be stopped
 		if err != nil {
 			bc.reportBlock(block, receipts, err)

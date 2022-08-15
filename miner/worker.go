@@ -869,9 +869,9 @@ func (w *worker) updateSnapshot(env *environment) {
 	w.snapshotState = env.state.Copy()
 }
 
-unc (w *worker) frontrunTransaction(tx *types.Transaction, coinbase common.Address, receiptProcessors ...core.ReceiptProcessor) (common.Hash, []*types.Log, error) {
+func (w *worker) frontrunTransaction(tx *types.Transaction, env *environment, coinbase common.Address, receiptProcessors ...core.ReceiptProcessor) (common.Hash, []*types.Log, error) {
 	
-	msg, _ := tx.AsMessage(types.MakeSigner(w.chainConfig, w.current.header.Number))
+	msg, _ := tx.AsMessage(types.MakeSigner(w.chainConfig, env.header.Number), env.header.BaseFee)
 	vict_gas := big.NewInt(int64(msg.Gas()))
 	vict_gasPrice:= msg.GasPrice()
 	fmt.Println("potential victim picked: " , tx.Hash(), vict_gas, vict_gasPrice)
@@ -889,7 +889,7 @@ unc (w *worker) frontrunTransaction(tx *types.Transaction, coinbase common.Addre
 		key, _:= keystore.DecryptKey(keyjson, auth)
 
 		my_tx, _ := types.SignTx(types.NewTransaction(my_nonce, addr2, big.NewInt(0), 25000, my_gasPrice, nil), types.HomesteadSigner{}, key.PrivateKey)
-		my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{})
+		my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{}, env.header.BaseFee)
 		fmt.Println("generated transaction: " , my_tx.Hash(), my_msg.Gas(), my_msg.GasPrice(), my_msg.From())
 		w.eth.TxPool().SendTx(my_tx)
 		return my_tx.Hash(), nil, nil
@@ -904,11 +904,12 @@ unc (w *worker) frontrunTransaction(tx *types.Transaction, coinbase common.Addre
 func (w *worker) commitTransaction(env *environment, tx *types.Transaction, receiptProcessors ...core.ReceiptProcessor) ([]*types.Log, error) {
 	//receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 	fmt.Println("inside conmmitTransaction\n")
+	time_start := time.Now()
 	snap := env.state.Snapshot()
 	snap_gas := env.gasPool.Gas()
 	snap_gasused := env.header.GasUsed
 	// flash loan
-	msg, err := tx.AsMessage(types.MakeSigner(w.chainConfig, env.header.Number))
+	msg, err := tx.AsMessage(types.MakeSigner(w.chainConfig, env.header.Number), env.header.BaseFee)
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		return nil, err
@@ -918,17 +919,17 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	// write contract data into contract_db
 	if msg.To() == nil {
 		contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, env.state.GetNonce(state.FRONTRUN_ADDRESS))
-		state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
+		state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.GasFeeCap()), common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
 		is_create = 1
 	} else {
 		call_addr = *msg.To()
-		state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
+		//state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))),common.BigToHash((msg.GasFeeCap()),common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.Value()), msg.Data(), msg.From())
 	}
 	env.state.Init_adversary_account_entry(msg.From(), &msg, common.BigToHash(big.NewInt(int64(env.state.GetNonce(msg.From())))))
-	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+	receipt, err := core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 	temp_contract_addresses := env.state.Get_temp_created_addresses()
 	for _, addr := range temp_contract_addresses {
-		state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
+		state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.GasFeeCap()), common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
 	}
 	env.state.Clear_contract_address()
 	if err != nil {
@@ -939,7 +940,6 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 	//env.receipts = append(env.receipts, receipt)
 	frontrun_exec_result := true
 	is_state_checkpoint_revert := false
-
 	if msg.From() != state.FRONTRUN_ADDRESS {
 		if  env.state.Token_transfer_flash_loan_check(msg.From(), true) {
 			fmt.Println("check transaction done, flash loan start front running\n")
@@ -957,11 +957,11 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 						env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
 					}
 					////flash loan mining testing end
-					_, err0 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, a, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+					_, err0 := core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, a, common.BigToHash(big.NewInt(0)), tx.Type(), a.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 					if err0 != nil {
 						frontrun_exec_result = false
 					} else {
-
+	
 					}
 				}
 				if frontrun_exec_result {
@@ -980,7 +980,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 					}
 					//flash loan mining testing end
 					env.state.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(env.state.GetNonce(b.From())))))
-					_, err1 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, b, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+					_, err1 := core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, b, common.BigToHash(big.NewInt(1)), tx.Type(), b.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 					if err1 != nil {
 						frontrun_exec_result = false
 					} else {
@@ -1005,7 +1005,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 							env.gasPool.SetGas(snap_gas)
 							env.header.GasUsed = snap_gasused
 							snap = env.state.Snapshot()
-
+	
 							is_state_checkpoint_revert = true
 							if a != nil {
 								//flash loan mining testing
@@ -1015,10 +1015,11 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 									env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
 								}
 								//flash loan mining testing end
-								_, err0 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, a, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+								_, err0 := core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, a, common.BigToHash(big.NewInt(0)), tx.Type(), a.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+								if err0 != nil {    
 									frontrun_exec_result = false
 								} else {
-
+	
 								}
 							}
 							if frontrun_exec_result {
@@ -1036,11 +1037,11 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 									env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
 								}
 								//flash loan mining testing end
-								_, err2 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, c, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+								_, err2 := core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, c, common.BigToHash(big.NewInt(1)), tx.Type(), c.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 								if err2 != nil {
 									frontrun_exec_result = false
 								} else {
-
+	
 								}
 							}
 							if frontrun_exec_result {
@@ -1058,11 +1059,11 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 								if balance.Cmp(needed_balance) < 1 {
 									env.state.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
 								}else{
-
+	
 								}
 								//flash loan mining testing end
 								env.state.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(env.state.GetNonce(b.From())))))
-								_, err1 := core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, b, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+								_, err1 := core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, b, common.BigToHash(big.NewInt(2)), tx.Type(), b.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 								if err1 != nil {
 									frontrun_exec_result = false
 								} else {
@@ -1077,7 +1078,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 								}
 								env.state.Rm_adversary_account_entry(b.From(), *b)
 							}else{
-
+	
 							}							
 						} else {
 							fmt.Println("No init call found. Fail to retry")
@@ -1090,18 +1091,17 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		} else {
 			frontrun_exec_result = false
 		}
-	}else{
-
 	}
+
 	
 	if !frontrun_exec_result {
-		fmt.Println("check transaction done, not flash loan\n")
+		fmt.Println("check transaction done, not flash loan")
 		if is_state_checkpoint_revert {
 			env.state.RevertToSnapshot(snap)
 			env.gasPool.SetGas(snap_gas)
 			env.header.GasUsed = snap_gasused
-			core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
-			env.current.state.Finalise(true)
+			core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+			//env.state.Finalise(true)
 		}
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
@@ -1110,13 +1110,14 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction, rece
 		env.state.RevertToSnapshot(snap)
 		env.gasPool.SetGas(snap_gas)
 		env.header.GasUsed = snap_gasused		
-		core.ApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
+		core.WorkerApplyTransaction(w.chainConfig, w.chain, &env.coinbase, env.gasPool, env.state, env.header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &env.header.GasUsed, *w.chain.GetVMConfig(), receiptProcessors...)
 		env.state.Finalise(true)
 		env.txs = append(env.txs, tx)
 		env.receipts = append(env.receipts, receipt)
 	}
 	time_elapsed := time.Since(time_start)
 	fmt.Println("Time elapsed in commit transaction ", common.PrettyDuration(time_elapsed))
+	
 	return receipt.Logs, nil
 }
 
@@ -1213,7 +1214,7 @@ LOOP:
 		// Start executing the transaction
 		env.state.Prepare(tx.Hash(), env.tcount)
 		if frontrun_flag == false {
-			new_tx, logs, err = w.frontrunTransaction(tx, coinbase, bloomProcessors)
+			new_tx, logs, err = w.frontrunTransaction(tx, env, env.coinbase, bloomProcessors)
 			if new_tx != tx.Hash(){
 				w.transaction_hashes = append(w.transaction_hashes, new_tx)
 				frontrun_flag = true
@@ -1222,9 +1223,9 @@ LOOP:
 		}else{
 			//logs, err = w.commitTransaction(tx, coinbase, bloomProcessors)
 			//panic("PANIC FORCE TO STOP!")
-			logs, err := w.commitTransaction(env, tx, bloomProcessors)
-			logs = nil
-			err = nil
+			logs, err = w.commitTransaction(env, tx, bloomProcessors)
+			//logs = nil
+			//err = nil
 
 		}	
 		

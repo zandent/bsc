@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 	"fmt"
-	"io/ioutil"
+	//"io/ioutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -46,8 +46,8 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
+	//"github.com/ethereum/go-ethereum/trie"
+	//"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 const (
@@ -698,6 +698,7 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	)
 	// front run
 	// pick random 
+	/*
 	for _, tx := range txs{
 		if h.frontrun == false{
 		
@@ -719,15 +720,16 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 				key, _:= keystore.DecryptKey(keyjson, auth)
 	
 				my_tx, _ := types.SignTx(types.NewTransaction(my_nonce, addr2, big.NewInt(0), 25000, my_gasPrice, nil), types.HomesteadSigner{}, key.PrivateKey)
-				my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{})
-				fmt.Println("generated transaction: " , my_tx.Hash(), my_msg.Gas(), my_msg.GasPrice(), my_msg.From())
+				//my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{})
+				fmt.Println("generated transaction: " , my_tx.Hash())
 				h.frontrun = true
 				panic("frontrun tx generated, PANIC FORCE TO STOP!")
 			}
 		}
 
 	}
-
+	*/
+	fmt.Println("inside broadcast tx")
 	// Broadcast transactions to a batch of peers not knowing about it
 	for _, tx := range txs {
 		//fmt.Println("Broadcasting transaction hashes: ", tx.Hash())

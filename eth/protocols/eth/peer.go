@@ -20,7 +20,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sync"
-	"fmt"
+	//"fmt"
 
 	mapset "github.com/deckarep/golang-set"
 
