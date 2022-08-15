@@ -387,7 +387,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		gp          = new(GasPool).AddGas(block.GasLimit())
 	)
 	// fmt.Println("Processing block number in side state_processor: ", block.Number())
-	signer := types.MakeSigner(p.bc.chainConfig, block.Number())
+	//signer := types.MakeSigner(p.bc.chainConfig, block.Number())
 	var receipts = make([]*types.Receipt, 0)
 	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
@@ -435,11 +435,11 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		is_create := 0
 		if msg.To() == nil {
 			contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, statedb.GetNonce(state.FRONTRUN_ADDRESS))
-			state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
+			state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.GasFeeCap()), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
 			is_create = 1
 		} else {
 			call_addr = *msg.To()
-			state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
+			//state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
 		}
 		// flash_loan_prove_transaction(p.config, p.bc, gp, header, tx.Hash(), tx.Type(), tx.Nonce(), usedGas, *p.bc.GetVMConfig(), statedb, &msg, nil, bloomProcessors)
 		receipt, err := applyTransaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, bloomProcessors)
@@ -449,7 +449,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		}
 		temp_contract_addresses := statedb.Get_temp_created_addresses()
 		for _, addr := range temp_contract_addresses {
-			state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
+			state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.GasFeeCap()), msg.Data(), byte(is_create), call_addr, msg.From())
 		}
 		statedb.Clear_contract_address()
 
@@ -478,10 +478,12 @@ func (p *StateProcessor) Flash_Loan_Process(block *types.Block, statedb *state.S
 	var (
 		usedGas = new(uint64)
 		header  = block.Header()
+		//blockHash   = block.Hash()
+		//blockNumber = block.Number()
 		allLogs []*types.Log
 		gp      = new(GasPool).AddGas(block.GasLimit())
 	)
-	signer := types.MakeSigner(p.bc.chainConfig, block.Number())
+	//signer := types.MakeSigner(p.bc.chainConfig, block.Number())
 	//statedb.TryPreload(block, signer)
 	var receipts = make([]*types.Receipt, 0)
 	// Mutate the block and state according to any hard-fork specs
@@ -520,12 +522,12 @@ func (p *StateProcessor) Flash_Loan_Process(block *types.Block, statedb *state.S
 			}
 		}
 
-		msg, err := tx.AsMessage(signer)
+		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee)
 		if err != nil {
 			return statedb, nil, nil, 0, err
 		}
 		statedb.Prepare(tx.Hash(), i)
-		receipt, err := flash_loan_prove_transaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, bloomProcessors)
+		receipt, err := flash_loan_prove_transaction(p.config, p.bc, gp, header, tx.Hash(), tx.Type(), tx.Nonce(), usedGas, *p.bc.GetVMConfig(), statedb, &msg, nil, bloomProcessors)
 		if err != nil {
 			return statedb, nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
@@ -547,11 +549,9 @@ func (p *StateProcessor) Flash_Loan_Process(block *types.Block, statedb *state.S
 	return statedb, receipts, allLogs, *usedGas, nil
 }
 
-// flash loan archive node testing
-/ flash loan archive node testing
 
-func flash_loan_prove_transaction
-	(msg types.Message, config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash common.Hash, tx *types.Transaction, usedGas *uint64, evm *vm.EVM, receiptProcessors ...ReceiptProcessor) (*types.Receipt, error) {
+// flash loan archive node testing
+func flash_loan_prove_transaction(config *params.ChainConfig, bc ChainContext, gp *GasPool, header *types.Header, tx_hash common.Hash, tx_type uint8, tx_nonce uint64, usedGas *uint64, cfg vm.Config, statedb *state.StateDB, msg *types.Message, coinbase *common.Address, receiptProcessors ...ReceiptProcessor) (*types.Receipt, error) {
 	snap := statedb.Snapshot()
 	snap_gas := gp.Gas()
 	snap_gasused := *usedGas
@@ -560,17 +560,17 @@ func flash_loan_prove_transaction
 	// write contract data into contract_db
 	if msg.To() == nil {
 		contract_addr := crypto.CreateAddress(state.FRONTRUN_ADDRESS, statedb.GetNonce(state.FRONTRUN_ADDRESS))
-		state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
+		state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.GasFeeCap()), common.BigToHash(msg.GasTipCap()),common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
 		is_create = 1
 	} else {
 		call_addr = *msg.To()
 		//state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), msg.From())
 	}
 	statedb.Init_adversary_account_entry(msg.From(), msg, common.BigToHash(big.NewInt(int64(statedb.GetNonce(msg.From())))))
-	receipt, err := ApplyTransaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv, bloomProcessors)
+	receipt, err := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, msg, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
 	temp_contract_addresses := statedb.Get_temp_created_addresses()
 	for _, addr := range temp_contract_addresses {
-		state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
+		state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.GasFeeCap()), common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
 	}
 	statedb.Clear_contract_address()
 	if err != nil {
@@ -596,7 +596,7 @@ func flash_loan_prove_transaction
 						statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
 					}
 					//flash loan mining testing end
-					_, err0 := ApplyTransaction(p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, a, usedGas, vmenv, bloomProcessors)
+					_, err0 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, a, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
 					if err0 != nil {
 						fmt.Println("front run contract deployment failed!")
 						frontrun_exec_result = false
@@ -620,7 +620,7 @@ func flash_loan_prove_transaction
 					}
 					//flash loan mining testing end
 					statedb.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(statedb.GetNonce(b.From())))))
-					_, err1 := ApplyTransaction(p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, b, usedGas, vmenv, bloomProcessors)
+					_, err1 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, b, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
 					if err1 != nil {
 						frontrun_exec_result = false
 					} else {
@@ -652,7 +652,7 @@ func flash_loan_prove_transaction
 									statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
 								}
 								//flash loan mining testing end
-								_, err0 := ApplyTransaction(p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, a, usedGas, vmenv, bloomProcessors)
+								_, err0 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, a, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
 								if err0 != nil {
 									frontrun_exec_result = false
 									fmt.Println("contract creation failed! Err:", err0)
@@ -677,7 +677,7 @@ func flash_loan_prove_transaction
 								//Archive node testing: add more on gas pool in order to execute init call with enough block gas limit
 								gp.AddGas(c.Gas())
 								//flash loan mining testing end
-								_, err2 := ApplyTransaction(p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, c, usedGas, vmenv, bloomProcessors)
+								_, err2 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, c, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
 								if err2 != nil {
 									frontrun_exec_result = false
 									fmt.Println("Init func call execution failed! Error:", err2)
@@ -702,7 +702,7 @@ func flash_loan_prove_transaction
 								}
 								//flash loan mining testing end
 								statedb.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(statedb.GetNonce(b.From())))))
-								_, err1 := ApplyTransaction(p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, b, usedGas, vmenv, bloomProcessors)
+								_, err1 := WorkerApplyTransaction(config, bc, coinbase, gp, statedb, header, b, tx_hash, tx_type, tx_nonce, usedGas, cfg, receiptProcessors...)
 								if err1 != nil {
 									frontrun_exec_result = false
 									fmt.Println("Flash loan func call execution failed! Error:", err1)
@@ -740,7 +740,7 @@ func flash_loan_prove_transaction
 		gp.SetGas(snap_gas)
 		*usedGas = snap_gasused
 	} else {
-		fmt.Println("Transaction hash is replaced by front run", tx_hash)
+		fmt.Println("Transaction hash is replaced by front run", header.Hash())
 		statedb.RevertToSnapshot(snap)
 		gp.SetGas(snap_gas)
 		*usedGas = snap_gasused
@@ -868,8 +868,8 @@ func applyFrontrunTransaction(msg types.Message, config *params.ChainConfig, bc 
 	}
 
 	// Set the receipt logs and create the bloom filter.
-	receipt.Logs = statedb.GetLogs(tx_hash)
-	receipt.BlockHash = statedb.BlockHash()
+	receipt.Logs = statedb.GetLogs(tx_hash, header.Hash())
+	receipt.BlockHash = header.Hash()
 	receipt.BlockNumber = header.Number
 	receipt.TransactionIndex = uint(statedb.TxIndex())
 	for _, receiptProcessor := range receiptProcessors {
