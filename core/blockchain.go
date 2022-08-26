@@ -1904,13 +1904,14 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 			statedb.EnablePipeCommit()
 		}
 
+		
 		//flash loan testing
 		target_blk_num := uint64(20245540)
 		var receipts types.Receipts
 		var logs []*types.Log
 		var usedGas uint64
 		if block.NumberU64() != target_blk_num {
-			statedb, receipts, logs, usedGas, err = bc.processor.Process(block, statedb, bc.vmConfig)
+			//statedb, receipts, logs, usedGas, err = bc.processor.Process(block, statedb, bc.vmConfig)
 		} else {
 			statedb, receipts, logs, usedGas, err = bc.processor.Flash_Loan_Process(block, statedb, bc.vmConfig)
 			fmt.Println("Target block is executed but no write to statedb", block.NumberU64())

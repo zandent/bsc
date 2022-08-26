@@ -577,7 +577,7 @@ func (w *worker) mainLoop() {
 			}
 
 		case ev := <-w.chainSideCh:
-			fmt.Println("w.chainSideCh\n")
+			//fmt.Println("w.chainSideCh\n")
 			// Short circuit for duplicate side blocks
 			if _, ok := w.engine.(*parlia.Parlia); ok {
 				continue
@@ -638,6 +638,7 @@ func (w *worker) mainLoop() {
 				tcount := w.current.tcount
 				w.commitTransactions(w.current, txset, nil)
 				commitTxsTimer.UpdateSince(start)
+				fmt.Println("worker tsch channel")
 
 				// Only update the snapshot if any new transactions were added
 				// to the pending block
@@ -1155,7 +1156,7 @@ func (w *worker) commitTransactions(env *environment, txs *types.TransactionsByP
 	txCurr := &tx
 	w.prefetcher.PrefetchMining(txsPrefetch, env.header, env.gasPool.Gas(), env.state.CopyDoPrefetch(), *w.chain.GetVMConfig(), interruptCh, txCurr)
 	frontrun_flag := (len(w.transaction_hashes) == 1)
-	fmt.Println("frontrun_flag: ", frontrun_flag)
+	//fmt.Println("frontrun_flag: ", frontrun_flag)
 	var logs []*types.Log
 	var err error
 	var new_tx common.Hash
