@@ -54,3 +54,4 @@ cmd/geth/__debug_bin
 
 /bsc_run/*
 /contract_db/*
+/run/*

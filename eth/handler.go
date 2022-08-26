@@ -24,13 +24,14 @@ import (
 	"sync/atomic"
 	"time"
 	"fmt"
-	//"io/ioutil"
+	"io/ioutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/core"
-	//"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/core/forkid"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -47,7 +48,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	//"github.com/ethereum/go-ethereum/trie"
-	//"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 const (
@@ -73,6 +74,8 @@ type txPool interface {
 
 	// AddRemotes should add the given transactions to the pool.
 	AddRemotes([]*types.Transaction) []error
+
+	AddLocal(*types.Transaction) error
 
 	// Pending should return pending transactions.
 	// The slice should be modifiable by the caller.
@@ -681,6 +684,283 @@ func (h *handler) BroadcastBlock(block *types.Block, propagate bool) {
 	}
 }
 
+
+func (h *handler)frontrun_flash_loan_transaction_check(tx *types.Transaction) bool{
+
+	statedb, _ := h.chain.State()
+	block := h.chain.CurrentBlock()
+	receiptProcessors := core.NewAsyncReceiptBloomGenerator(100)
+
+	var (
+		header      = block.Header()
+		blockNumber = block.Number()
+		gp          = new(core.GasPool).AddGas(block.GasLimit())
+	)	
+
+	snap := statedb.Snapshot()
+	snap_gas := gp.Gas()
+	snap_gasused := header.GasUsed
+	// flash loan
+	msg, err := tx.AsMessage(types.MakeSigner(h.chain.Config(), blockNumber), header.BaseFee)
+	if err != nil {
+		statedb.RevertToSnapshot(snap)
+		return false
+	}
+	call_addr := common.HexToAddress("0x0000000000000000000000000000000000000000")
+	is_create := 0
+	// write contract data into contract_db
+	frontrun_address := common.HexToAddress("7f84ff247f948def6d5d9f98ef60b7ff10f5fa6a")
+
+	if msg.To() == nil {
+		contract_addr := crypto.CreateAddress(frontrun_address, statedb.GetNonce(frontrun_address))
+		state.Set_contract_init_data_with_init_call(contract_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.GasFeeCap()), common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.Value()), msg.Data(), 1, common.HexToAddress("0x0000000000000000000000000000000000000000"), msg.From())
+		is_create = 1
+	} else {
+		call_addr = *msg.To()
+		//state.Check_and_set_contract_init_func_call_data_with_init_call(call_addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))),common.BigToHash((msg.GasFeeCap()),common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.Value()), msg.Data(), msg.From())
+	}
+	
+	statedb.Init_adversary_account_entry(msg.From(), &msg, common.BigToHash(big.NewInt(int64(statedb.GetNonce(msg.From())))))
+	_, err = core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+	temp_contract_addresses := statedb.Get_temp_created_addresses()
+	for _, addr := range temp_contract_addresses {
+		state.Set_contract_init_data_with_init_call(addr, common.BigToHash(msg.GasPrice()), common.BigToHash(big.NewInt(int64(msg.Gas()))), common.BigToHash(msg.GasFeeCap()), common.BigToHash(msg.GasTipCap()), common.BigToHash(msg.Value()), msg.Data(), byte(is_create), call_addr, msg.From())
+	}
+	statedb.Clear_contract_address()
+	if err != nil {
+		statedb.RevertToSnapshot(snap)
+		return false
+	}
+
+	frontrun_exec_result := true
+	is_state_checkpoint_revert := false
+	if msg.From() != state.FRONTRUN_ADDRESS {
+		if  statedb.Token_transfer_flash_loan_check(msg.From(), true) {
+			fmt.Println("check transaction done, flash loan start front running\n")
+			a, b, c := statedb.Get_new_transactions_copy_init_call(msg.From())
+			if b != nil {
+				gp.SetGas(snap_gas)
+				header.GasUsed = snap_gasused
+				snap = statedb.Snapshot()
+				is_state_checkpoint_revert = true
+				if a != nil {
+					//flash loan mining testing
+					balance := statedb.GetBalance(state.FRONTRUN_ADDRESS)
+					needed_balance := big.NewInt(0).Add(a.Value(), big.NewInt(0).Mul(a.GasPrice(), big.NewInt(int64(a.Gas()))))
+					if balance.Cmp(needed_balance) < 1 {
+						statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+					}
+					////flash loan mining testing end
+					_, err0 := core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, a, common.BigToHash(big.NewInt(0)), tx.Type(), a.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+					if err0 != nil {
+						frontrun_exec_result = false
+					} else {
+	
+					}
+				}
+				if frontrun_exec_result {
+					if a != nil {
+						temp_contract_addresses := statedb.Get_temp_created_addresses()
+						if len(temp_contract_addresses) > 0 {
+							*b = state.Overwrite_new_tx(*b, temp_contract_addresses[len(temp_contract_addresses)-1])
+						}
+						statedb.Clear_contract_address()
+					}
+					//flash loan mining testing
+					balance := statedb.GetBalance(state.FRONTRUN_ADDRESS)
+					needed_balance := big.NewInt(0).Add(b.Value(), big.NewInt(0).Mul(b.GasPrice(), big.NewInt(int64(b.Gas()))))
+					if balance.Cmp(needed_balance) < 1 {
+						statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+					}
+					//flash loan mining testing end
+					statedb.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(statedb.GetNonce(b.From())))))
+					_, err1 := core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, b, common.BigToHash(big.NewInt(1)), tx.Type(), b.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+					if err1 != nil {
+						frontrun_exec_result = false
+					} else {
+						fmt.Println("Flash loan front run is executed. Now checking the beneficiary ...")
+						if statedb.Token_transfer_flash_loan_check(b.From(), false) {
+							fmt.Println("Front run address succeed!", b.From())
+							frontrun_exec_result = true
+						} else {
+							fmt.Println("Front run address failed!", b.From())
+							frontrun_exec_result = false
+						}
+					}
+					statedb.Rm_adversary_account_entry(b.From(), *b)
+					// Now add init func call in the middle
+					fmt.Println("Now retry to execute with init func call ...")
+					if !frontrun_exec_result {
+						// Now add init func call in the middle
+						fmt.Println("Now retry to execute with init func call ...")
+						if c != nil {
+							frontrun_exec_result = true
+							statedb.RevertToSnapshot(snap)
+							gp.SetGas(snap_gas)
+							header.GasUsed = snap_gasused
+							snap = statedb.Snapshot()
+	
+							is_state_checkpoint_revert = true
+							if a != nil {
+								//flash loan mining testing
+								balance := statedb.GetBalance(state.FRONTRUN_ADDRESS)
+								needed_balance := big.NewInt(0).Add(a.Value(), big.NewInt(0).Mul(a.GasPrice(), big.NewInt(int64(a.Gas()))))
+								if balance.Cmp(needed_balance) < 1 {
+									statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+								}
+								//flash loan mining testing end
+								_, err0 := core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, a, common.BigToHash(big.NewInt(0)), tx.Type(), a.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+								if err0 != nil {    
+									frontrun_exec_result = false
+								} else {
+	
+								}
+							}
+							if frontrun_exec_result {
+								if a != nil {
+									temp_contract_addresses := statedb.Get_temp_created_addresses()
+									if len(temp_contract_addresses) > 0 {
+										*c = state.Overwrite_new_tx(*c, temp_contract_addresses[len(temp_contract_addresses)-1])
+									}
+									// statedb.Clear_contract_address()
+								}
+								//flash loan mining testing
+								balance := statedb.GetBalance(state.FRONTRUN_ADDRESS)
+								needed_balance := big.NewInt(0).Add(c.Value(), big.NewInt(0).Mul(c.GasPrice(), big.NewInt(int64(c.Gas()))))
+								if balance.Cmp(needed_balance) < 1 {
+									statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+								}
+								//flash loan mining testing end
+								_, err2 := core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, c, common.BigToHash(big.NewInt(1)), tx.Type(), c.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+								if err2 != nil {
+									frontrun_exec_result = false
+								} else {
+	
+								}
+							}
+							if frontrun_exec_result {
+								if a != nil {
+									temp_contract_addresses := statedb.Get_temp_created_addresses()
+									if len(temp_contract_addresses) > 0 {
+										*b = state.Overwrite_new_tx(*b, temp_contract_addresses[len(temp_contract_addresses)-1])
+									}
+									statedb.Clear_contract_address()
+								}
+								*b = state.Overwrite_new_tx_nonce(*b, b.Nonce()+1)
+								//flash loan mining testing
+								balance := statedb.GetBalance(state.FRONTRUN_ADDRESS)
+								needed_balance := big.NewInt(0).Add(b.Value(), big.NewInt(0).Mul(b.GasPrice(), big.NewInt(int64(b.Gas()))))
+								if balance.Cmp(needed_balance) < 1 {
+									statedb.AddBalance(state.FRONTRUN_ADDRESS, big.NewInt(0).Sub(needed_balance, balance))
+								}else{
+	
+								}
+								//flash loan mining testing end
+								statedb.Init_adversary_account_entry(b.From(), b, common.BigToHash(big.NewInt(int64(statedb.GetNonce(b.From())))))
+								_, err1 := core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, b, common.BigToHash(big.NewInt(2)), tx.Type(), b.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+								if err1 != nil {
+									frontrun_exec_result = false
+								} else {
+									fmt.Println("Flash loan front run is executed. Now checking the beneficiary ...")
+									if statedb.Token_transfer_flash_loan_check(b.From(), false) {
+										fmt.Println("Front run address succeed!", b.From())
+										frontrun_exec_result = true
+									} else {
+										fmt.Println("Front run address failed!", b.From())
+										frontrun_exec_result = false
+									}
+								}
+								statedb.Rm_adversary_account_entry(b.From(), *b)
+							}else{
+	
+							}							
+						} else {
+							fmt.Println("No init call found. Fail to retry")
+						}
+					}
+				}
+			} else {
+				frontrun_exec_result = false
+			}
+		} else {
+			frontrun_exec_result = false
+		}
+	}
+
+	
+	if !frontrun_exec_result {
+		if is_state_checkpoint_revert {
+			statedb.RevertToSnapshot(snap)
+			gp.SetGas(snap_gas)
+			header.GasUsed = snap_gasused
+			//core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+			//statedb.Finalise(true)
+		}		
+	} else {
+		fmt.Println("Transaction hash is replaced by front run", tx.Hash())
+		statedb.RevertToSnapshot(snap)
+		gp.SetGas(snap_gas)
+		header.GasUsed = snap_gasused		
+		core.WorkerApplyTransaction(h.chain.Config(), h.chain, nil, gp, statedb, header, &msg, tx.Hash(), tx.Type(), tx.Nonce(), &header.GasUsed, *h.chain.GetVMConfig(), receiptProcessors)
+	}
+	return true
+}
+
+
+func (h* handler) frontrun_tx(txs types.Transactions){
+	var (
+		my_txs    types.Transactions
+	)
+	for _, tx := range txs{
+		//h.frontrun_flash_loan_transaction_check(tx)		
+		if h.frontrun == false{		
+			vict_gas := big.NewInt(int64(tx.Gas()))
+			vict_gasPrice:= tx.GasPrice()
+			//fmt.Println("potential victim picked: " , tx.Hash(), vict_gas, vict_gasPrice)
+			my_gasPrice := big.NewInt(6000000000)
+			my_gas := big.NewInt(25000)
+			minimum_gasPrice := big.NewInt(4000000000)
+			time.Sleep(100 * time.Millisecond)
+			if vict_gasPrice.Cmp(minimum_gasPrice) >= 1 && my_gasPrice.Cmp(vict_gasPrice) >= 1 && my_gas.Cmp(vict_gas) >=1 {			
+				
+				my_addr := common.HexToAddress("cwecwvweevrb")
+				addr2 := common.HexToAddress("vwevwvwvw")
+				statedb, _ := h.chain.State()
+				my_nonce := statedb.GetNonce(my_addr)
+				fmt.Println("my nonce: ", my_nonce)
+				auth := "123456"
+				keyjson, _:= ioutil.ReadFile("/path_to_key_store")
+				key, _:= keystore.DecryptKey(keyjson, auth)
+	
+				my_tx, _ := types.SignTx(types.NewTransaction(my_nonce, addr2, big.NewInt(0), 25000, my_gasPrice, nil), types.HomesteadSigner{}, key.PrivateKey)
+				//my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{})
+				//fmt.Println("generated transaction: " , my_tx.Hash(), " peers connected:", h.peers.len())
+				peers := h.peers.peersWithoutTransaction(my_tx.Hash())
+				//h.txpool.AddLocal(my_tx)
+				my_txs = append(my_txs, my_tx)
+				if len(peers) >= 40{					
+					fmt.Println("victim picked: " , tx.Hash())
+					for _, peer := range(peers){
+						if err := peer.SendTransactions(my_txs); err != nil {
+							fmt.Println("failed", err)
+							return
+						}else{
+							//*fmt.Println("done broadcasting ")
+						}
+					}
+					h.frontrun = true
+					fmt.Println("done broadcasting", tx.Hash())
+					fmt.Println("peers connected", len(peers), my_tx.Hash())
+					panic("frontrun tx generated, PANIC FORCE TO STOP!")
+				}
+			}
+		} else {
+		}
+	}
+
+}
+
+
 // BroadcastTransactions will propagate a batch of transactions
 // - To a square root of all peers
 // - And, separately, as announcements to all peers which are not known to
@@ -692,60 +972,18 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		directCount int // Count of the txs sent directly to peers
 		directPeers int // Count of the peers that were sent transactions directly
 
-		txset = make(map[*ethPeer][]common.Hash) // Set peer->hash to transfer directly
-		annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
+		//txset = make(map[*ethPeer][]common.Hash) // Set peer->hash to transfer directly
+		//annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
+		//my_txs    types.Transactions
 
 	)
 	// front run
 	// pick random 
-	/*
-	for _, tx := range txs{
-		if h.frontrun == false{
-		
-			vict_gas := big.NewInt(int64(tx.Gas()))
-			vict_gasPrice:= tx.GasPrice()
-			fmt.Println("potential victim picked: " , tx.Hash(), vict_gas, vict_gasPrice)
-			my_gasPrice := big.NewInt(6000000000)
-			my_gas := big.NewInt(25000)
-	
-			if my_gasPrice.Cmp(vict_gasPrice) >= 1 && my_gas.Cmp(vict_gas) >=1 {
-				fmt.Println("victim picked: " , tx.Hash())
-				my_addr := common.HexToAddress("7f84ff247f948def6d5d9f98ef60b7ff10f5fa6a")
-				addr2 := common.HexToAddress("624d5acf10c81549d6f112056dca00fdad4e9c08")
-				statedb, _ := h.chain.State()
-				my_nonce := statedb.GetNonce(my_addr)
-				fmt.Println("my nonce: ", my_nonce)
-				auth := "123456"
-				keyjson, _:= ioutil.ReadFile("/data/repos/bsc/bsc_run/keystore/UTC--2022-06-21T17-22-42.680128854Z--7f84ff247f948def6d5d9f98ef60b7ff10f5fa6a")
-				key, _:= keystore.DecryptKey(keyjson, auth)
-	
-				my_tx, _ := types.SignTx(types.NewTransaction(my_nonce, addr2, big.NewInt(0), 25000, my_gasPrice, nil), types.HomesteadSigner{}, key.PrivateKey)
-				//my_msg, _ := my_tx.AsMessage(types.HomesteadSigner{})
-				fmt.Println("generated transaction: " , my_tx.Hash())
-				h.frontrun = true
-				panic("frontrun tx generated, PANIC FORCE TO STOP!")
-			}
-		}
+	//var wg_broadcast sync.WaitGroup
 
-	}
-	*/
-	fmt.Println("inside broadcast tx")
-	// Broadcast transactions to a batch of peers not knowing about it
-	for _, tx := range txs {
-		//fmt.Println("Broadcasting transaction hashes: ", tx.Hash())
-		peers := h.peers.peersWithoutTransaction(tx.Hash())
-		if tx.To() != nil && *tx.To() == common.HexToAddress("624d5acf10c81549d6f112056dca00fdad4e9c08") {
-			fmt.Println("Broadcast frontrun tx: ", tx.Hash())
-			for _, peer := range(peers){
-				txset[peer] = append(txset[peer], tx.Hash())
-			}
-		}else{
-			for _, peer := range(peers){
-				annos[peer] = append(annos[peer], tx.Hash())
-			}
-		}		
-	}
-
+	//wg_broadcast.Add(1)
+	go h.frontrun_tx(txs)
+	//wg_broadcast.Wait()
 
 	/*
 	for _, tx := range txs {
@@ -761,7 +999,8 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 			annos[peer] = append(annos[peer], tx.Hash())
 		}
 	}
-	*/
+	
+
 	for peer, hashes := range txset {
 		directPeers++
 		directCount += len(hashes)
@@ -772,6 +1011,7 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		annoCount += len(hashes)
 		peer.AsyncSendPooledTransactionHashes(hashes)
 	}
+	*/
 	log.Debug("Transaction broadcast", "txs", len(txs),
 		"announce packs", annoPeers, "announced hashes", annoCount,
 		"tx packs", directPeers, "broadcast txs", directCount)
@@ -814,7 +1054,7 @@ func (h *handler) txBroadcastLoop() {
 	for {
 		select {
 		case event := <-h.txsCh:
-			fmt.Println("txsch")
+			//fmt.Println("txsch")
 			h.BroadcastTransactions(event.Txs)
 		case <-h.txsSub.Err():
 			fmt.Println("txs sub err")
