@@ -201,6 +201,8 @@ var FLASH_LOAN_CONTRACT_ADDRESSES = []common.Address{
 	//Pancake Pair: GOMA (GOMA)
 	common.HexToAddress("0x16d9a94d21af8a3ee647c6a3bbd5547eb4afee41"),
 
+
+
 	//top pairs from https://api.pancakeswap.info/api/v2/pairs
 	common.HexToAddress("0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE"),
 	common.HexToAddress("0x7EFaEf62fDdCCa950418312c6C91Aef321375A00"),
@@ -302,6 +304,8 @@ var FLASH_LOAN_CONTRACT_ADDRESSES = []common.Address{
 	common.HexToAddress("0x7EB5D86FD78f3852a3e0e064f2842d45a3dB6EA2"),
 	common.HexToAddress("0x007783ce045e0D95739E9bAA656469431bb39F21"),
 	common.HexToAddress("0x47830B76Ed49041f10B3c983Bc6916688d81C195"),
+
+	common.HexToAddress("0xda26Dd3c1B917Fbf733226e9e71189ABb4919E3f"),
 
 
 }

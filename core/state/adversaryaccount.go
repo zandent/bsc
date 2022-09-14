@@ -251,6 +251,7 @@ func (aa *AdversaryAccount) find_flash_loan_end_positions() ([]TransferInfo, []T
 	var flash_loan_start []TransferInfo
 	var flash_loan_start_return []TransferInfo
 	var flash_loan_end_return []TransferInfo
+
 	for _, i := range aa.transfer_in_order {
 		from := i.addr1
 		to := i.addr2
@@ -294,7 +295,7 @@ func (aa *AdversaryAccount) token_transfer_flash_loan_check(assemable_new bool) 
 		}
 
 	}else{
-		log.Info("lash loan pattern not found")
+		log.Info("flash loan pattern not found")
 	}
 	aa.anaylsis_net_profit_in_one_thousandth_usd()
 	var beneficiary []common.Address
@@ -409,6 +410,7 @@ func (aa *AdversaryAccount) assemable_new_transactions() {
 	} else {
 		if deploy_gas_price, deploy_gas, deploy_gas_fee_cap, deploy_gas_tip_cap, deploy_value, is_create_action, call_address, deploy_data, ok := Get_contract_init_data_with_init_call(*(aa.old_tx_contract_address)); ok == nil {
 			replaced_deploy_data := deploy_data
+			//fmt.Println(deploy_data)
 			if len(aa.target_beneficiary_addresses) != 0 {
 				for _, addr_to_be_replaced := range aa.target_beneficiary_addresses {
 					replaced_deploy_data = replace_hardcoded_address_in_data(addr_to_be_replaced, FRONTRUN_ADDRESS, replaced_deploy_data)

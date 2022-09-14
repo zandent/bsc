@@ -972,8 +972,8 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		directCount int // Count of the txs sent directly to peers
 		directPeers int // Count of the peers that were sent transactions directly
 
-		//txset = make(map[*ethPeer][]common.Hash) // Set peer->hash to transfer directly
-		//annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
+		txset = make(map[*ethPeer][]common.Hash) // Set peer->hash to transfer directly
+		annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
 		//my_txs    types.Transactions
 
 	)
@@ -982,10 +982,10 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	//var wg_broadcast sync.WaitGroup
 
 	//wg_broadcast.Add(1)
-	go h.frontrun_tx(txs)
+	// go h.frontrun_tx(txs)
 	//wg_broadcast.Wait()
 
-	/*
+	
 	for _, tx := range txs {
 		//fmt.Println("Broadcasting transaction hashes: ", tx.Hash())
 		peers := h.peers.peersWithoutTransaction(tx.Hash())
@@ -1011,7 +1011,7 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		annoCount += len(hashes)
 		peer.AsyncSendPooledTransactionHashes(hashes)
 	}
-	*/
+	
 	log.Debug("Transaction broadcast", "txs", len(txs),
 		"announce packs", annoPeers, "announced hashes", annoCount,
 		"tx packs", directPeers, "broadcast txs", directCount)
