@@ -333,6 +333,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		contractAddr := crypto.CreateAddress(sender.Address(), st.evm.StateDB.GetNonce(sender.Address()))
 		st.evm.StateDB.Set_token_flow_in_current_transaction(msg.From(), contractAddr, common.BigToHash(msg.Value()), common.HexToAddress("0x0000000000000000000000000000000000000001"))
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
+		//fmt.Println("len of data in contract creation ", len(st.data))
 	} else {
 		st.evm.StateDB.Set_token_flow_in_current_transaction(msg.From(), *msg.To(), common.BigToHash(msg.Value()), common.HexToAddress("0x0000000000000000000000000000000000000001"))
 		// Increment the nonce for the next transaction
