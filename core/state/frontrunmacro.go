@@ -306,6 +306,7 @@ var FLASH_LOAN_CONTRACT_ADDRESSES = []common.Address{
 	common.HexToAddress("0x47830B76Ed49041f10B3c983Bc6916688d81C195"),
 
 	common.HexToAddress("0xda26Dd3c1B917Fbf733226e9e71189ABb4919E3f"),
+	common.HexToAddress("0xFeAFe253802b77456B4627F8c2306a9CeBb5d681"),
 
 
 }

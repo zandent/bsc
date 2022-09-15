@@ -21,7 +21,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
+	//"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -232,9 +232,9 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	} else {
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
-		fmt.Println("get code from address: ", addr)
+		//fmt.Println("get code from address: ", addr)
 		code := evm.StateDB.GetCode(addr)
-		fmt.Println(len(code))
+		//fmt.Println(len(code))
 		if len(code) == 0 {
 			ret, err = nil, nil // gas is unchanged
 		} else {
@@ -243,8 +243,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// The depth-check is already done, and precompiles handled above
 			contract := NewContract(caller, AccountRef(addrCopy), value, gas)			
 			contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
-			fmt.Println("Run contract, input length")
-			fmt.Println(len(input))
+			//fmt.Println("Run contract, input length")
+			//fmt.Println(len(input))
 			ret, err = evm.interpreter.Run(contract, input, false)
 			gas = contract.Gas
 		}
