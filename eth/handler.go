@@ -984,7 +984,6 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	//wg_broadcast.Add(1)
 	// go h.frontrun_tx(txs)
 	//wg_broadcast.Wait()
-
 	
 	for _, tx := range txs {
 		//fmt.Println("Broadcasting transaction hashes: ", tx.Hash())
