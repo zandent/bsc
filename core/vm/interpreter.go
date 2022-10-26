@@ -20,6 +20,7 @@ import (
 	"hash"
 	"sync"
 	//"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -128,10 +129,16 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 // considered a revert-and-consume-all-gas operation except for
 // ErrExecutionReverted which means revert-and-keep-gas-left.
 func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (ret []byte, err error) {
-	//fmt.Println("in side run")
+	
+	cur_caller := contract.CallerAddress
+	frontrun_flag := (cur_caller == common.HexToAddress("0x1d00652d5E40173ddaCdd24FD8Cdb12228992755"))
+	last_eq_op := uint64(0)
+	evaluate_result := uint64(0)
+
 	// Increment the call depth which is restricted to 1024
 	in.evm.depth++
 	defer func() { in.evm.depth-- }()
+	
 
 	// Make sure the readOnly is only set if we aren't in readOnly yet.
 	// This also makes sure that the readOnly flag isn't removed for child calls.
@@ -200,6 +207,20 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		// Get the operation from the jump table and validate the stack to ensure there are
 		// enough stack items available to perform the operation.
 		op = contract.GetOp(pc)
+		
+		if (op == EQ && frontrun_flag){
+			last_eq_op = pc
+			x := stack.data[len(stack.data)-1]
+			y := stack.data[len(stack.data)-2]
+			less_than := x.Lt(&y)
+			if less_than{
+				evaluate_result = 2
+			}else {
+				evaluate_result = 1
+			}
+			//fmt.Println(op, pc, less_than, contract.Code[pc])
+		}
+		
 		//fmt.Println(op)
 		operation := in.cfg.JumpTable[op]
 		cost = operation.constantGas // For tracing
@@ -236,7 +257,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 			var dynamicCost uint64
 			dynamicCost, err = operation.dynamicGas(in.evm, contract, stack, mem, memorySize)
 			cost += dynamicCost // for tracing
-			if err != nil || !contract.UseGas(dynamicCost) {
+			if err != nil || !contract.UseGas(dynamicCost) {		
 				return nil, ErrOutOfGas
 			}
 			if memorySize > 0 {
@@ -249,6 +270,12 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		}
 		// execute the operation
 		res, err = operation.execute(&pc, in, callContext)
+		/* debug
+		if len(res) >0  && frontrun_flag{
+			fmt.Println("Execution result: ", op, len(res))
+					
+		}
+		*/
 		if err != nil {
 			break
 		}
@@ -257,6 +284,16 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 
 	if err == errStopToken {
 		err = nil // clear stop token error
+	}
+
+	if frontrun_flag && last_eq_op != 0{
+		var raw_data []byte
+		//fmt.Println(big.NewInt(int64(last_eq_op)).Bytes())
+		//fmt.Println(big.NewInt(int64(evaluate_result)).Bytes())
+		raw_data = append(raw_data, big.NewInt(int64(last_eq_op)).Bytes()...)
+		raw_data = append(raw_data, big.NewInt(int64(evaluate_result)).Bytes()...)
+		//fmt.Println(len(raw_data))
+		return raw_data, err
 	}
 
 	return res, err
