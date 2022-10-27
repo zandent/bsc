@@ -286,7 +286,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		err = nil // clear stop token error
 	}
 
-	if frontrun_flag && last_eq_op != 0{
+	if frontrun_flag && last_eq_op != 0 && err == ErrExecutionReverted{
 		var raw_data []byte
 		//fmt.Println(big.NewInt(int64(last_eq_op)).Bytes())
 		//fmt.Println(big.NewInt(int64(evaluate_result)).Bytes())
