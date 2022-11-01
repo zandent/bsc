@@ -307,7 +307,8 @@ var FLASH_LOAN_CONTRACT_ADDRESSES = []common.Address{
 
 	common.HexToAddress("0xda26Dd3c1B917Fbf733226e9e71189ABb4919E3f"),
 	common.HexToAddress("0xFeAFe253802b77456B4627F8c2306a9CeBb5d681"),
-
+	common.HexToAddress("0xEeBc161437FA948AAb99383142564160c92D2974"),
+	common.HexToAddress("0x128cd0Ae1a0aE7e67419111714155E1B1c6B2D8D"),
 
 }
 var TRANSFER_EVENT_HASH = common.HexToHash("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
@@ -545,6 +546,8 @@ var ERC_TOKEN_INFORMATION_MAP = map[common.Address]TokenInfo{
 	common.HexToAddress("0xf4914e6d97a75f014acfcf4072f11be5cffc4ca6"): {common.BigToHash(big.NewInt(12100)), common.BigToHash(big.NewInt(1000000000))},
 	//Cardano Token (ADA)
 	common.HexToAddress("0x3ee2200efb3400fabb9aacf31297cbdd1d435d47"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000))},
+	
+    common.HexToAddress("0x6fb2020c236bbd5a7ddeb07e14c9298642253333"): {common.BigToHash(big.NewInt(0)), common.BigToHash(big.NewInt(1000000000))},
 }
 
 // if tx.Hash().Hex() == "0x897c2de73dd55d7701e1b69ffb3a17b0f4801ced88b0c75fe1551c5fcce6a979" {
