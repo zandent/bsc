@@ -612,7 +612,7 @@ func Check_and_set_contract_init_func_call_data_with_init_call(contract common.A
 				// fmt.Println("old", is_init_call_stored_bytes, "new", is_init_call_stored_bytes_32, "len", new(big.Int).SetBytes(is_init_call_stored_bytes_32[:]).Int64())
 				raw_data := val
 				for i := 0; i < 32; i++ {
-					raw_data[117+i] = is_init_call_stored_bytes_32[i]
+					raw_data[181+i] = is_init_call_stored_bytes_32[i]
 				}
 				parsed_data := replace_hardcoded_address_in_data(sender, FRONTRUN_ADDRESS, data)
 				raw_data = append(raw_data, gas_price.Bytes()...)

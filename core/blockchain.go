@@ -1678,7 +1678,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 	//target_blk_num := uint64(20839687)
 	//target_blk_num := uint64(20840080)
 	//target_blk_num := uint64(20916740)
-	target_blk_num := uint64(17248706)
+	target_blk_num := uint64(18225003)
 	fmt.Println("Processing block number: ", chain[0].Number(), "to", chain[len(chain)-1].Number(), "total block num: ", len(chain), "tx num of first block", len(chain[0].Transactions()), "current block", bc.CurrentBlock().NumberU64(), "target block", target_blk_num)
 
 
@@ -1913,7 +1913,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 		//target_blk_num := uint64(20245540)
 		//target_blk_num := uint64(20840080)
 		//target_blk_num := uint64(20916740)
-		target_blk_num := uint64(17248706)
+		target_blk_num := uint64(18225003)
 		var receipts types.Receipts
 		var logs []*types.Log
 		var usedGas uint64
